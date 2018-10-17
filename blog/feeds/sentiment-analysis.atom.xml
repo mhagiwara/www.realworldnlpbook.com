@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Real-World Natural Language Processing - Sentiment Analysis</title><link href="http://www.realworldnlpbook.com/blog/" rel="alternate"></link><link href="http://www.realworldnlpbook.com/blog/feeds/sentiment-analysis.atom.xml" rel="self"></link><id>http://www.realworldnlpbook.com/blog/</id><updated>2018-10-13T00:00:00-04:00</updated><entry><title>Training a Sentiment Analyzer using AllenNLP (in less than 100 lines of Python code)</title><link href="http://www.realworldnlpbook.com/blog/training-sentiment-analyzer-using-allennlp.html" rel="alternate"></link><published>2018-10-13T00:00:00-04:00</published><updated>2018-10-13T00:00:00-04:00</updated><author><name>Masato Hagiwara</name></author><id>tag:www.realworldnlpbook.com,2018-10-13:/blog/training-sentiment-analyzer-using-allennlp.html</id><summary type="html">&lt;h2&gt;What is Sentiment Analysis?&lt;/h2&gt;
+&lt;p&gt;Sentiment analysis is a popular text analysis technique used to automatically identify and categorize subjective information in text. It is widely used to quantify opinions, emotions, etc. that are usually written in a unstructured way and thus hard to quantify otherwise. Sentiment analysis is applied to …&lt;/p&gt;</summary><content type="html">&lt;h2&gt;What is Sentiment Analysis?&lt;/h2&gt;
+&lt;p&gt;Sentiment analysis is a popular text analysis technique used to automatically identify and categorize subjective information in text. It is widely used to quantify opinions, emotions, etc. that are usually written in a unstructured way and thus hard to quantify otherwise. Sentiment analysis is applied to a wide variety of textual resources such as survey, reviews, social media posts, and so on. &lt;/p&gt;
+&lt;p&gt;One of the most basic tasks in sentiment analysis is classification of polarity, that is, to classify whether the expressed opinion is positive, negative, or neutral. There could be more than three classes, e.g., strongly positive, positive, neutral, negative, strongly negative. This may sound familiar to you if you've used one of the websites (think: Amazon) where people can review things (products, movies, anything) using a 5-point scale expressed by the number of stars. &lt;/p&gt;
+&lt;h2&gt;Stanford Sentiment TreeBank&lt;/h2&gt;
+&lt;p&gt;There are several publicly available datasets for sentiment classification. In this post, we are going to use the &lt;a href="https://nlp.stanford.edu/sentiment/"&gt;Stanford Sentiment TreeBank&lt;/a&gt;, or SST, which is probably one of the most widely-used sentiment datasets as of today. One feature that separates SST from other datasets is that in SST, sentiment labels are assigned not only to sentences but also to every phrase and word in sentences. This enables us to study the complex semantic interactions between words and phrases. For example, the polarity of this entire sentence:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;This movie was actually neither that funny, nor super witty.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;would definitely be negative, although if you look at the individual words ("funny", "witty") you might be fooled and think it is positive. Naive bag-of-words classifier which look only at individual words would have difficuties classifying this example correctly. In order to correctly classify the polarity of this sentence you need to understand the semantic impact of the negation ("neither ... nor ..."). For this property, SST has been used as the standard benchmark for neural network models that can capture syntactic structures of sentence [&lt;a href="https://nlp.stanford.edu/~socherr/EMNLP2013_RNTN.pdf"&gt;Socher et al. 2013&lt;/a&gt;].   &lt;/p&gt;
+&lt;h2&gt;PyTorch and AllenNLP&lt;/h2&gt;
+&lt;p&gt;&lt;a href="https://pytorch.org/"&gt;PyTorch&lt;/a&gt; is my favorite deep learning framework. It provides flexible, easy-to-write modules that you can run dynamically while being reasonably fast. The use of PyTorch in research community &lt;a href="https://www.reddit.com/r/MachineLearning/comments/9kys38/r_frameworks_mentioned_iclr_20182019_tensorflow/"&gt;has exploded in the past year&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Although PyTorch is a very powerful framework, natural language processing often involves low-level, boilerplate chores, including, but not limited to: reading and writing datasets, tokenizing and indexing words, managing vocabulary, minibatching, sorting and padding, etc. Although having such building blocks correctly is crucial in NLP tasks, you need to write similar design patterns again and again when you are iterating fast, which could be time-wasting. This is where libraries like AllenNLP shines.&lt;/p&gt;
+&lt;p&gt;&lt;a href="https://allennlp.org/"&gt;AllenNLP&lt;/a&gt; is an open-source NLP platform developed by Allen Institute of Artificial Intelligence. It is designed to support quick iterations for NLP research and development, especially for semantic and language understanding tasks. It provides a flexible API, useful abstractions for NLP, and a modular experimental framework that accelerates NLP research. &lt;/p&gt;
+&lt;p&gt;In this post, I'm going to show you a step-by-step guide of how to build your own sentiment classifier using AllenNLP. Because AllenNLP takes care of low-level chores and provides the training framework, the entire script is &lt;a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/sentiment/sst_classifier.py"&gt;less than just 100 lines of Python&lt;/a&gt;. If necessary, you can experiment with other network architectures quite easily. &lt;/p&gt;
+&lt;p&gt;Go ahead and download the SST dataset - what you'll need is the dataset split into train, dev, testsets in PTB tree format which can be downloaded from &lt;a href="https://nlp.stanford.edu/sentiment/trainDevTestTrees_PTB.zip"&gt;this link&lt;/a&gt;. We assume that those files are expanded under &lt;code&gt;data/stanfordSentimentTreebank/trees&lt;/code&gt;. &lt;/p&gt;
+&lt;p&gt;Note that in the code snippets below we assume that you already &lt;code&gt;import&lt;/code&gt;ed appropriate modules, classes, and methods. See the &lt;a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/sentiment/sst_classifier.py"&gt;full script&lt;/a&gt; for more details. By the way you'll notice that this script is very similar to the AllenNLP's &lt;a href="https://allennlp.org/tutorials"&gt;part-of-speech tagging tutorial&lt;/a&gt; - it is very easy to experiment with different models and tasks with little modification in AllenNLP.  &lt;/p&gt;
+&lt;h2&gt;Reading and Pre-processing Dataset&lt;/h2&gt;
+&lt;p&gt;AllenNLP already provides a handy dataset reader called &lt;code&gt;StanfordSentimentTreeBankDatasetReader&lt;/code&gt;, an interface for reading the SST dataset. You can read the dataset by specifying the path to the dataset files as the argument for the &lt;code&gt;read()&lt;/code&gt; method as in: &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;reader&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;StanfordSentimentTreeBankDatasetReader&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+&lt;span class="n"&gt;train_dataset&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;reader&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;read&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;data/stanfordSentimentTreebank/trees/train.txt&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;dev_dataset&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;reader&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;read&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;data/stanfordSentimentTreebank/trees/dev.txt&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The first step in almost any deep NLP tasks is to specify how to convert textual data into tensors. This includes a step where words and labels (in this case, polarity labels such as "positive" and "negative") are converted to integer IDs. In AllenNLP, this is taken care of by &lt;code&gt;Vocabulary&lt;/code&gt;, which stores the mapping from words/labels to IDs.  &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# You can optionally specify the minimum count of tokens/labels.&lt;/span&gt;
+&lt;span class="c1"&gt;# `min_count={&amp;#39;tokens&amp;#39;:3}` here means that any tokens that appear less than three times&lt;/span&gt;
+&lt;span class="c1"&gt;# will be ignored and not included in the vocabulary.&lt;/span&gt;
+&lt;span class="n"&gt;vocab&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Vocabulary&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;from_instances&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;train_dataset&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;dev_dataset&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                                  &lt;span class="n"&gt;min_count&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;tokens&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The next step in many deep NLP tasks is to convert words into an embedding. In deep learning, an embedding is a continuous vector representation of something that is usually discrete and high dimensional. You can use &lt;code&gt;Embedding&lt;/code&gt; to create this mapping and use &lt;code&gt;BasicTextFieldEmbedder&lt;/code&gt; to actually convert IDs into embedded vectors. &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;token_embedding&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Embedding&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;num_embeddings&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_vocab_size&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;tokens&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+                            &lt;span class="n"&gt;embedding_dim&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;EMBEDDING_DIM&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="c1"&gt;# BasicTextFieldEmbedder takes a dict - we need an embedding just for tokens,&lt;/span&gt;
+&lt;span class="c1"&gt;# not for labels, which are used as-is as the &amp;quot;answer&amp;quot; of the sentence classification&lt;/span&gt;
+&lt;span class="n"&gt;word_embeddings&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;BasicTextFieldEmbedder&lt;/span&gt;&lt;span class="p"&gt;({&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;tokens&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;token_embedding&lt;/span&gt;&lt;span class="p"&gt;})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h2&gt;Sentence Classification Model&lt;/h2&gt;
+&lt;p&gt;Now, let's define our model that classifies sentence into classes. This seems a lot - don't worry, I added extensive comments in the snippet:  &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# Model in AllenNLP represents a model that is trained.&lt;/span&gt;
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;LstmClassifier&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Model&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="fm"&gt;__init__&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                 &lt;span class="n"&gt;word_embeddings&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;TextFieldEmbedder&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                 &lt;span class="n"&gt;encoder&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;Seq2VecEncoder&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                 &lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;Vocabulary&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;-&amp;gt;&lt;/span&gt; &lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="nb"&gt;super&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="fm"&gt;__init__&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="c1"&gt;# We need the embeddings to convert word IDs to their vector representations&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;word_embeddings&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;word_embeddings&lt;/span&gt;
+
+        &lt;span class="c1"&gt;# Seq2VecEncoder is a neural network abstraction that takes a sequence of something&lt;/span&gt;
+        &lt;span class="c1"&gt;# (usually a sequence of embedded word vectors), processes it, and returns a single&lt;/span&gt;
+        &lt;span class="c1"&gt;# vector. Oftentimes this is an RNN-based architecture (e.g., LSTM or GRU), but&lt;/span&gt;
+        &lt;span class="c1"&gt;# AllenNLP also supports CNNs and other simple architectures (for example,&lt;/span&gt;
+        &lt;span class="c1"&gt;# just averaging over the input vectors).&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;encoder&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;encoder&lt;/span&gt;
+
+        &lt;span class="c1"&gt;# After converting a sequence of vectors to a single vector, we feed it into&lt;/span&gt;
+        &lt;span class="c1"&gt;# a fully-connected linear layer to reduce the dimension to the total number of labels.&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;hidden2tag&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Linear&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;in_features&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;encoder&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_output_dim&lt;/span&gt;&lt;span class="p"&gt;(),&lt;/span&gt;
+                                          &lt;span class="n"&gt;out_features&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_vocab_size&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;labels&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;accuracy&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;CategoricalAccuracy&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+        &lt;span class="c1"&gt;# We use the cross entropy loss because this is a classification task.&lt;/span&gt;
+        &lt;span class="c1"&gt;# Note that PyTorch&amp;#39;s CrossEntropyLoss combines softmax and log likelihood loss,&lt;/span&gt;
+        &lt;span class="c1"&gt;# which makes it unnecessary to add a separate softmax layer.&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;loss_function&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;CrossEntropyLoss&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+    &lt;span class="c1"&gt;# Instances are fed to forward after batching.&lt;/span&gt;
+    &lt;span class="c1"&gt;# Fields are passed through arguments with the same name.&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;forward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                &lt;span class="n"&gt;tokens&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;Dict&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="nb"&gt;str&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Tensor&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt;
+                &lt;span class="n"&gt;label&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Tensor&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;-&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Tensor&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="c1"&gt;# In deep NLP, when sequences of tensors in different lengths are batched together,&lt;/span&gt;
+        &lt;span class="c1"&gt;# shorter sequences get padded with zeros to make them equal length.&lt;/span&gt;
+        &lt;span class="c1"&gt;# Masking is the process to ignore extra zeros added by padding&lt;/span&gt;
+        &lt;span class="n"&gt;mask&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;get_text_field_mask&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;tokens&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+        &lt;span class="c1"&gt;# Forward pass&lt;/span&gt;
+        &lt;span class="n"&gt;embeddings&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;word_embeddings&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;tokens&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;encoder_out&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;encoder&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;embeddings&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;mask&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;logits&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;hidden2tag&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;encoder_out&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+        &lt;span class="c1"&gt;# In AllenNLP, the output of forward() is a dictionary.&lt;/span&gt;
+        &lt;span class="c1"&gt;# Your output dictionary must contain a &amp;quot;loss&amp;quot; key for your model to be trained.&lt;/span&gt;
+        &lt;span class="n"&gt;output&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;logits&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;logits&lt;/span&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+        &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;label&lt;/span&gt; &lt;span class="ow"&gt;is&lt;/span&gt; &lt;span class="ow"&gt;not&lt;/span&gt; &lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+            &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;accuracy&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;logits&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;label&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+            &lt;span class="n"&gt;output&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;loss&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;loss_function&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;logits&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;label&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;output&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The key here is to &lt;code&gt;Seq2VecEncoder&lt;/code&gt;, which basically takes a sequence of tensors and returns a single vector. We use an LSTM-RNN implementation as the encoder (see the documentation for &lt;a href="https://allenai.github.io/allennlp-docs/api/allennlp.modules.seq2vec_encoders.html#allennlp.modules.seq2vec_encoders.pytorch_seq2vec_wrapper.PytorchSeq2VecWrapper"&gt;PytorchSeq2VecWrapper&lt;/a&gt; for why we need it):&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;lstm = PytorchSeq2VecWrapper(
+    torch.nn.LSTM(EMBEDDING_DIM, HIDDEN_DIM, batch_first=True))
+
+model = LstmClassifier(word_embeddings, lstm, vocab)
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h2&gt;Training&lt;/h2&gt;
+&lt;p&gt;Once you define the model, the rest of the training process is fairly easy. This is where high-level frameworks such as AllenNLP shine. Instead of writing tedious batching and training loops (as you'd do with PyTorch and TensorFlow), you just specify how to iterate through data and pass necessary arguments to the trainer:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;optimizer&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;optim&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Adam&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;parameters&lt;/span&gt;&lt;span class="p"&gt;(),&lt;/span&gt; &lt;span class="n"&gt;lr&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mf"&gt;1e-4&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;weight_decay&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mf"&gt;1e-5&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="n"&gt;iterator&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;BucketIterator&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;batch_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;32&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;sorting_keys&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;[(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;tokens&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;num_tokens&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)])&lt;/span&gt;
+&lt;span class="n"&gt;iterator&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;index_with&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="n"&gt;trainer&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Trainer&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                  &lt;span class="n"&gt;optimizer&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;optimizer&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                  &lt;span class="n"&gt;iterator&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;iterator&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                  &lt;span class="n"&gt;train_dataset&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;train_dataset&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                  &lt;span class="n"&gt;validation_dataset&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;dev_dataset&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                  &lt;span class="n"&gt;patience&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;10&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                  &lt;span class="n"&gt;num_epochs&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;20&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="n"&gt;trainer&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;train&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;code&gt;BucketIterator&lt;/code&gt; here sorts the training instances by the number of tokens so that instances in similar lengths end up in the same batch. Note that we also pass the validation dataset for early stopping.&lt;/p&gt;
+&lt;p&gt;If you run this for 20 epochs, you should get an accuracy of ~ 0.78 on the training set and ~ 0.35 on the dev set. This may sound very low, but note that this is a 5-class classification problem and the random baseline accuracy is only 0.20.&lt;/p&gt;
+&lt;h2&gt;Testing&lt;/h2&gt;
+&lt;p&gt;In order to test if the model you just trained is working as expected, you need a predictor. A &lt;code&gt;Predictor&lt;/code&gt; is a class that provides JSON-based interfaces for passing the data to/from your model. I went ahead and wrote &lt;a href="https://github.com/mhagiwara/realworldnlp/blob/master/realworldnlp/predictors.py#L10"&gt;&lt;code&gt;SentenceClassifierPredictor&lt;/code&gt;&lt;/a&gt; which acts as a JSON-based interface to the sentence classification model.&lt;/p&gt;
+&lt;p&gt;```Python
+tokens = ['This', 'is', 'the', 'best', 'movie', 'ever', '!']
+predictor = SentenceClassifierPredictor(model, dataset_reader=reader)
+logits = predictor.predict(tokens)['logits']
+label_id = np.argmax(logits)&lt;/p&gt;
+&lt;p&gt;print(model.vocab.get_token_from_index(label_id, 'labels'))
+```&lt;/p&gt;
+&lt;p&gt;You should see &lt;code&gt;4&lt;/code&gt;as a result of running this snippet. 4 is the label corresponding to "very positive". So the model you just trained correctly predicted this is a very positive movie review!&lt;/p&gt;
+&lt;p&gt;And that's it for now - from next time I'll explore the use of ELMo and also JSON-based configuration files in AllenNLP. Stay turned!&lt;/p&gt;</content></entry></feed>
