@@ -130,12 +130,14 @@ model = LstmClassifier(word_embeddings, lstm, vocab)
 &lt;p&gt;If you run this for 20 epochs, you should get an accuracy of ~ 0.78 on the training set and ~ 0.35 on the dev set. This may sound very low, but note that this is a 5-class classification problem and the random baseline accuracy is only 0.20.&lt;/p&gt;
 &lt;h2&gt;Testing&lt;/h2&gt;
 &lt;p&gt;In order to test if the model you just trained is working as expected, you need a predictor. A &lt;code&gt;Predictor&lt;/code&gt; is a class that provides JSON-based interfaces for passing the data to/from your model. I went ahead and wrote &lt;a href="https://github.com/mhagiwara/realworldnlp/blob/master/realworldnlp/predictors.py#L10"&gt;&lt;code&gt;SentenceClassifierPredictor&lt;/code&gt;&lt;/a&gt; which acts as a JSON-based interface to the sentence classification model.&lt;/p&gt;
-&lt;p&gt;```Python
-tokens = ['This', 'is', 'the', 'best', 'movie', 'ever', '!']
-predictor = SentenceClassifierPredictor(model, dataset_reader=reader)
-logits = predictor.predict(tokens)['logits']
-label_id = np.argmax(logits)&lt;/p&gt;
-&lt;p&gt;print(model.vocab.get_token_from_index(label_id, 'labels'))
-```&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;tokens&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;This&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;is&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;the&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;best&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;movie&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;ever&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;!&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;span class="n"&gt;predictor&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;SentenceClassifierPredictor&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;dataset_reader&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;reader&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;logits&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;predictor&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;predict&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;tokens&lt;/span&gt;&lt;span class="p"&gt;)[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;logits&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;span class="n"&gt;label_id&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;argmax&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;logits&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="k"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_token_from_index&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;label_id&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;labels&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
 &lt;p&gt;You should see &lt;code&gt;4&lt;/code&gt;as a result of running this snippet. 4 is the label corresponding to "very positive". So the model you just trained correctly predicted this is a very positive movie review!&lt;/p&gt;
 &lt;p&gt;And that's it for now - from next time I'll explore the use of ELMo and also JSON-based configuration files in AllenNLP. Stay turned!&lt;/p&gt;</content></entry></feed>

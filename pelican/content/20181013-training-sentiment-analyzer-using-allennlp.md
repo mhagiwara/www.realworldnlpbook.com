@@ -166,7 +166,7 @@ If you run this for 20 epochs, you should get an accuracy of ~ 0.78 on the train
 
 In order to test if the model you just trained is working as expected, you need a predictor. A `Predictor` is a class that provides JSON-based interfaces for passing the data to/from your model. I went ahead and wrote [`SentenceClassifierPredictor`](https://github.com/mhagiwara/realworldnlp/blob/master/realworldnlp/predictors.py#L10) which acts as a JSON-based interface to the sentence classification model.
 
- ```Python
+```Python
 tokens = ['This', 'is', 'the', 'best', 'movie', 'ever', '!']
 predictor = SentenceClassifierPredictor(model, dataset_reader=reader)
 logits = predictor.predict(tokens)['logits']
