@@ -46,7 +46,7 @@
 <meta property="article:modified_time" content=""/>
 <meta property="article:author" content="http://www.realworldnlpbook.com/blog/author/masato-hagiwara.html">
 <meta property="article:section" content="Sentiment Analysis"/>
-<meta property="og:image" content="http://masatohagiwara.net/img/profile.jpg">
+<meta property="og:image" content="http://www.realworldnlpbook.com/blog/images/lstm_sst.png">
 
   <title>Real-World Natural Language Processing &ndash; Training a Sentiment Analyzer using AllenNLP (in less than 100 lines of Python code)</title>
 
@@ -138,7 +138,12 @@
 
 
 <h2>Sentence Classification Model</h2>
-<p>Now, define our model that classifies a sentence into classes. This seems like a lot, don't worry, I've added extensive comments in the snippet:  </p>
+<figure style="text-align: center">
+    <img src="images/lstm_sst.png"/>
+    <figcaption>Figure: LSTM-RNN Sentence Classification Model</figcaption>
+</figure>
+
+<p>Now, define our model that classifies a sentence into classes. The model is a standard LSTM-RNN plus a fully connected linear layer for classification. If this seems like a lot, don't worry, I've added extensive comments in the snippet:  </p>
 <div class="highlight"><pre><span></span><span class="c1"># Model in AllenNLP represents a model that is trained.</span>
 <span class="k">class</span> <span class="nc">LstmClassifier</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>

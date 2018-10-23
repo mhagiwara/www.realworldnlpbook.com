@@ -44,7 +44,12 @@
 
 
 &lt;h2&gt;Sentence Classification Model&lt;/h2&gt;
-&lt;p&gt;Now, define our model that classifies a sentence into classes. This seems like a lot, don't worry, I've added extensive comments in the snippet:  &lt;/p&gt;
+&lt;figure style="text-align: center"&gt;
+    &lt;img src="images/lstm_sst.png"/&gt;
+    &lt;figcaption&gt;Figure: LSTM-RNN Sentence Classification Model&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&lt;p&gt;Now, define our model that classifies a sentence into classes. The model is a standard LSTM-RNN plus a fully connected linear layer for classification. If this seems like a lot, don't worry, I've added extensive comments in the snippet:  &lt;/p&gt;
 &lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# Model in AllenNLP represents a model that is trained.&lt;/span&gt;
 &lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;LstmClassifier&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Model&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
     &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="fm"&gt;__init__&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;

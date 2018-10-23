@@ -1,7 +1,9 @@
 Title: Training a Sentiment Analyzer using AllenNLP (in less than 100 lines of Python code)
 Date: 2018-10-13 00:00
 Category: Sentiment Analysis
+Cover: images/lstm_sst.png
 slug: training-sentiment-analyzer-using-allennlp
+
 
 ## What is Sentiment Analysis?
 
@@ -70,7 +72,12 @@ word_embeddings = BasicTextFieldEmbedder({"tokens": token_embedding})
 
 ## Sentence Classification Model
 
-Now, define our model that classifies a sentence into classes. This seems like a lot, don't worry, I've added extensive comments in the snippet:  
+<figure style="text-align: center">
+	<img src="images/lstm_sst.png"/>
+	<figcaption>Figure: LSTM-RNN Sentence Classification Model</figcaption>
+</figure>
+
+Now, define our model that classifies a sentence into classes. The model is a standard LSTM-RNN plus a fully connected linear layer for classification. If this seems like a lot, don't worry, I've added extensive comments in the snippet:  
 
 ```Python
 # Model in AllenNLP represents a model that is trained.
