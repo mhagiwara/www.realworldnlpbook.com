@@ -1,6 +1,7 @@
 Title: Training a Sentiment Analyzer using AllenNLP (in less than 100 lines of Python code)
 Date: 2018-10-13 00:00
-Category: Sentiment Analysis
+Category: Sentiment Analysis 
+Tags: Sentiment Analysis, AllenNLP
 Cover: images/lstm_sst.png
 slug: training-sentiment-analyzer-using-allennlp
 
@@ -184,5 +185,6 @@ print(model.vocab.get_token_from_index(label_id, 'labels'))
 
 You should see `4`as a result of running this snippet. 4 is the label corresponding to "very positive". So, the model you just trained correctly predicted that this is a very positive movie review!
 
-And that's it for now. From next time, I'll explore the use of ELMo and also JSON-based configuration files in AllenNLP. Stay turned!
+And that's it for now. I hope you enjoyed this little tutorial. From next time, I'll explore the use of ELMo and also JSON-based configuration files in AllenNLP. This is a sample tutorial from my book "Real-World Natural Language Processing", which is to be published in 2019 from Manning Publications. I'll post more information on [the book website](http://realworldnlpbook.com) as I make progress on the book, so stay tuned!
+
  

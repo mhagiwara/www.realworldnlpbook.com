@@ -34,7 +34,7 @@
 
 <meta name="author" content="Masato Hagiwara" />
 <meta name="description" content="What is Sentiment Analysis? Sentiment analysis is a popular text analytic technique used in the automatic identification and categorization of subjective information within text. The technique is widely used in quantifying opinions, emotions, etc. that are usually written in an unstructured way; and thus, hard to quantify otherwise. Sentiment analysis …" />
-<meta name="keywords" content="">
+<meta name="keywords" content="Sentiment Analysis, AllenNLP">
 
 <meta property="og:site_name" content="Real-World Natural Language Processing"/>
 <meta property="og:title" content="Training a Sentiment Analyzer using AllenNLP (in less than 100 lines of Python code)"/>
@@ -46,9 +46,11 @@
 <meta property="article:modified_time" content=""/>
 <meta property="article:author" content="http://www.realworldnlpbook.com/blog/author/masato-hagiwara.html">
 <meta property="article:section" content="Sentiment Analysis"/>
+<meta property="article:tag" content="Sentiment Analysis"/>
+<meta property="article:tag" content="AllenNLP"/>
 <meta property="og:image" content="http://www.realworldnlpbook.com/blog/images/lstm_sst.png">
 
-  <title>Real-World Natural Language Processing &ndash; Training a Sentiment Analyzer using AllenNLP (in less than 100 lines of Python code)</title>
+  <title>Training a Sentiment Analyzer using AllenNLP (in less than 100 lines of Python code) &ndash; Real-World Natural Language Processing</title>
 
 </head>
 <body>
@@ -59,11 +61,11 @@
       </a>
       <h1><a href="http://www.realworldnlpbook.com/blog">Real-World Natural Language Processing</a></h1>
 
-
+<p>NLP recipes and best practices <br/>from the Manning book "Real-World NLP"</p>
       <nav>
         <ul class="list">
 
-          <li><a href="http://www.realworldnlpbook.com/" target="_blank">Home</a></li>
+          <li><a href="http://www.realworldnlpbook.com/" target="_blank">Real-World NLP Book</a></li>
           <li><a href="http://masatohagiwara.net/" target="_blank">Masato Hagiwara</a></li>
           <li><a href="https://www.manning.com/" target="_blank">Manning Publications</a></li>
         </ul>
@@ -239,10 +241,12 @@ model = LstmClassifier(word_embeddings, lstm, vocab)
 
 
 <p>You should see <code>4</code>as a result of running this snippet. 4 is the label corresponding to "very positive". So, the model you just trained correctly predicted that this is a very positive movie review!</p>
-<p>And that's it for now. From next time, I'll explore the use of ELMo and also JSON-based configuration files in AllenNLP. Stay turned!</p>
+<p>And that's it for now. I hope you enjoyed this little tutorial. From next time, I'll explore the use of ELMo and also JSON-based configuration files in AllenNLP. This is a sample tutorial from my book "Real-World Natural Language Processing", which is to be published in 2019 from Manning Publications. I'll post more information on <a href="http://realworldnlpbook.com">the book website</a> as I make progress on the book, so stay tuned!</p>
   </div>
   <div class="tag-cloud">
     <p>
+      <a href="http://www.realworldnlpbook.com/blog/tag/sentiment-analysis.html">Sentiment Analysis</a>
+      <a href="http://www.realworldnlpbook.com/blog/tag/allennlp.html">AllenNLP</a>
     </p>
   </div>
 

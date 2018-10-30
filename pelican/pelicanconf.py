@@ -3,10 +3,10 @@
 from __future__ import unicode_literals
 
 AUTHOR = 'Masato Hagiwara'
-SITEURL = ''
+SITEURL = 'http://localhost:8000/'
 SITENAME = 'Real-World Natural Language Processing'
 SITETITLE = 'Real-World Natural Language Processing'
-# SITESUBTITLE = 'NLP recipes and best practices for the Manning book "Real-World NLP"'
+SITESUBTITLE = 'NLP recipes and best practices <br/>from the Manning book "Real-World NLP"'
 SITELOGO = 'http://masatohagiwara.net/img/profile.jpg'
 
 # SITEDESCRIPTION = 'Foo Bar\'s Thoughts and Writings'
@@ -56,6 +56,8 @@ TIMEZONE = 'America/New_York'
 
 DEFAULT_LANG = 'en'
 
+DISABLE_URL_HASH = True
+
 # Feed generation is usually not desired when developing
 FEED_ALL_ATOM = None
 CATEGORY_FEED_ATOM = None
@@ -64,7 +66,7 @@ AUTHOR_FEED_ATOM = None
 AUTHOR_FEED_RSS = None
 
 # Blogroll
-LINKS = (('Home', 'http://www.realworldnlpbook.com/'),
+LINKS = (('Real-World NLP Book', 'http://www.realworldnlpbook.com/'),
          ('Masato Hagiwara', 'http://masatohagiwara.net/'),
          ('Manning Publications', 'https://www.manning.com/'),)
 
