@@ -1,5 +1,244 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>Real-World Natural Language Processing</title><link href="http://www.realworldnlpbook.com/blog/" rel="alternate"></link><link href="http://www.realworldnlpbook.com/blog/feeds/all.atom.xml" rel="self"></link><id>http://www.realworldnlpbook.com/blog/</id><updated>2018-10-27T00:00:00-04:00</updated><entry><title>Improving a Sentiment Analyzer using ELMo — Word Embeddings on Steroids</title><link href="http://www.realworldnlpbook.com/blog/improving-sentiment-analyzer-using-elmo.html" rel="alternate"></link><published>2018-10-27T00:00:00-04:00</published><updated>2018-10-27T00:00:00-04:00</updated><author><name>Masato Hagiwara</name></author><id>tag:www.realworldnlpbook.com,2018-10-27:/blog/improving-sentiment-analyzer-using-elmo.html</id><summary type="html">&lt;p&gt;In the &lt;a href="training-sentiment-analyzer-using-allennlp.html"&gt;previous post&lt;/a&gt;, I showed how to train a sentiment classifier from the Stanford Sentiment TreeBank. Thanks to a very powerful deep NLP framework, &lt;a href="https://allennlp.org/"&gt;AllenNLP&lt;/a&gt;, we were able to write the entire training pipeline in less than 100 lines of Python code. &lt;/p&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Real-World Natural Language Processing</title><link href="http://www.realworldnlpbook.com/blog/" rel="alternate"></link><link href="http://www.realworldnlpbook.com/blog/feeds/all.atom.xml" rel="self"></link><id>http://www.realworldnlpbook.com/blog/</id><updated>2018-12-06T00:00:00-05:00</updated><entry><title>Buidling Seq2Seq Machine Translation Models using AllenNLP</title><link href="http://www.realworldnlpbook.com/blog/building-seq2seq-machine-translation-models-using-allennlp.html" rel="alternate"></link><published>2018-12-06T00:00:00-05:00</published><updated>2018-12-06T00:00:00-05:00</updated><author><name>Masato Hagiwara</name></author><id>tag:www.realworldnlpbook.com,2018-12-06:/blog/building-seq2seq-machine-translation-models-using-allennlp.html</id><summary type="html">&lt;p&gt;In the past two posts, I introduced &lt;a href="http://www.realworldnlpbook.com/blog/training-sentiment-analyzer-using-allennlp.html"&gt;how to build a sentiment analyzer&lt;/a&gt; using AllenNLP and &lt;a href="http://www.realworldnlpbook.com/blog/improving-sentiment-analyzer-using-elmo.html"&gt;how to improve it using ELMo&lt;/a&gt;.
+AllenNLP is a very powerful framework that enables you to train many other NLP models with little to no code. In this post, I'll explain how to train …&lt;/p&gt;</summary><content type="html">&lt;p&gt;In the past two posts, I introduced &lt;a href="http://www.realworldnlpbook.com/blog/training-sentiment-analyzer-using-allennlp.html"&gt;how to build a sentiment analyzer&lt;/a&gt; using AllenNLP and &lt;a href="http://www.realworldnlpbook.com/blog/improving-sentiment-analyzer-using-elmo.html"&gt;how to improve it using ELMo&lt;/a&gt;.
+AllenNLP is a very powerful framework that enables you to train many other NLP models with little to no code. In this post, I'll explain how to train Seq2Seq machine translation models using AllenNLP.    &lt;/p&gt;
+&lt;h2&gt;Machine Translation 101&lt;/h2&gt;
+&lt;p&gt;Machine translation is probably one of the most popular and easy-to-understand NLP applications. It is also one of the most well-studied, earliest applications of NLP. Machine translation systems, given a piece of text in one language, translate to another language. The language the input text is written in is called the &lt;em&gt;source language&lt;/em&gt;, while the one for the output is called the &lt;em&gt;target language&lt;/em&gt;. You can think of MT as a language generation task, because it needs to generate an output that is natural in the target language based on the input.&lt;/p&gt;
+&lt;p&gt;One challenge in MT is generating translation that is natural in the target language while preserving the exact meaning expressed by the input. The former, i.e., the naturalness of the generated text is called &lt;em&gt;fluency&lt;/em&gt;, while the latter, the degree to which the output reflects the meaning of the source is called &lt;em&gt;adequacy&lt;/em&gt;. These two are often in conflict, especially when the source and the target languages are not very similar (for example, English and Mandarin Chinese). Good human translators address this trade-off in a creative way. The goal of general MT systems is to learn from good translators to achieve human-quality translations.&lt;/p&gt;
+&lt;h2&gt;Data Preparation&lt;/h2&gt;
+&lt;p&gt;Machine translation models learn how to translate from a large amount of parallel text, which is a collection of paired source (original) and target (translated) sentences. I'm going to to use the data from &lt;a href="https://tatoeba.org/eng"&gt;Tatoeba.org&lt;/a&gt; to create a parallel corpus. Tatoeba.org is an incredible resource of linguistic data, containing millions of sentences and translations in hundreds of different languages, and they are all available under the Creative Commons License. &lt;/p&gt;
+&lt;p&gt;We are going to download their data dump from the &lt;a href="https://tatoeba.org/eng/downloads"&gt;downloads page&lt;/a&gt;. After downloading &lt;code&gt;sentences.tar.bz2&lt;/code&gt; and &lt;code&gt;links.tar.bz2&lt;/code&gt; and extracting them, run this &lt;a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/mt/create_bitext.py"&gt;pre-processing script&lt;/a&gt; to extract parallel sentences as follows. As of this writing (December 2018), this creates ~42,000 Chinese-English pairs. &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;python examples/mt/create_bitext.py eng_cmn data/mt/sentences.csv data/mt/links.csv \
+    | cut -f3,6 &amp;gt; data/mt/tatoeba.eng_cmn.tsv
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The first command-line argument specifies &lt;code&gt;[source language code]_[target language code]&lt;/code&gt;. This is also called a &lt;em&gt;language pair&lt;/em&gt;, and usually one MT system is trained per one language pair (this is not always the case—for example, Google studies &lt;a href="https://arxiv.org/abs/1611.04558"&gt;a neural MT model&lt;/a&gt; that can translate between multiple languages). You can change this argument to extract any language pair you want. &lt;/p&gt;
+&lt;p&gt;You can check the first several lines of the generated file by the &lt;code&gt;head&lt;/code&gt; command: &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;Let&amp;#39;s try something.    我們試試看！
+I have to go to sleep.  我该去睡觉了。
+Today is June 18th and it is Muiriel&amp;#39;s birthday!    今天是６月１８号，也是Muiriel的生日！
+Muiriel is 20 now.  Muiriel现在20岁了。
+The password is &amp;quot;Muiriel&amp;quot;.  密码是&amp;quot;Muiriel&amp;quot;。
+The password is &amp;quot;Muiriel&amp;quot;.  密碼是「Muiriel」。
+I will be back soon.    我很快就會回來。
+I&amp;#39;m at a loss for words.    我不知道應該說什麼才好。
+This is never going to end. 這個永遠完不了了。
+This is never going to end. 这将永远继续下去。
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;One caveat is that Chinese sentences on Tatoeba are a mix of simplified and traditional Chinese. If look at the first two sentences and if you know Chinese, you'll notice that the first one is in traditional and the second one in simplified. This kind of inconsistency can cause some issues in MT, for example, degraded performance and inconsistent output. There are other types of linguistic inconsistencies that you may want to watch out for before you start training an MT system, including: upper and lower cases, punctuations, accents, and so on. Paying attention to details goes a long way in developing NLP applications. In this article, I'll simply ignore this issue. If you have time, you could try, for example, normalizing everything to simplified Chinese, or using a classifier to filter out sentences written in a script that you don't want.   &lt;/p&gt;
+&lt;p&gt;Next, we'll split this dataset into train (80%), dev (10%), and test (10%) sets. The dev (development) set is also called a validation set. It is a common practice to do this split by taking one line out of every 10 lines using a modulo operator, as in:      &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;cat data/mt/tatoeba.eng_cmn.tsv | awk &amp;#39;NR%10==1&amp;#39; &amp;gt; data/mt/tatoeba.eng_cmn.test.tsv
+cat data/mt/tatoeba.eng_cmn.tsv | awk &amp;#39;NR%10==2&amp;#39; &amp;gt; data/mt/tatoeba.eng_cmn.dev.tsv
+cat data/mt/tatoeba.eng_cmn.tsv | awk &amp;#39;NR%10!=1&amp;amp;&amp;amp;NR%10!=2&amp;#39; &amp;gt; data/mt/tatoeba.eng_cmn.train.tsv
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;After running this, &lt;code&gt;tatoeba.eng_cmn.test.tsv&lt;/code&gt; will contain every 10th line where line number (1-base) modulo 10 equals 1. Similarly, &lt;code&gt;tatoeba.eng_cmn.dev.tsv&lt;/code&gt; is every 10th line where line number modulo 10 equals 2. All the other sentences go into &lt;code&gt;tatoeba.eng_cmn.train.tsv&lt;/code&gt;. This means train, dev, and test sets contain ~4k, ~4k, and ~34k sentences, respectively. This is a very small dataset by the MT standard, but it's big enough to prototype and compare basic MT models quickly.  &lt;/p&gt;
+&lt;h2&gt;Loading and Processing Data&lt;/h2&gt;
+&lt;p&gt;It is easy to load and pre-process parallel corpora using AllenNLP. The library provides &lt;code&gt;Seq2SeqDatasetReader&lt;/code&gt;, which takes care of reading a tab-separated file containing parallel sentences. All you need to do is instantiate it with appropriate parameters:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;reader&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Seq2SeqDatasetReader&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;
+    &lt;span class="n"&gt;source_tokenizer&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;WordTokenizer&lt;/span&gt;&lt;span class="p"&gt;(),&lt;/span&gt;
+    &lt;span class="n"&gt;target_tokenizer&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;CharacterTokenizer&lt;/span&gt;&lt;span class="p"&gt;(),&lt;/span&gt;
+    &lt;span class="n"&gt;source_token_indexers&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;tokens&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;SingleIdTokenIndexer&lt;/span&gt;&lt;span class="p"&gt;()},&lt;/span&gt;
+    &lt;span class="n"&gt;target_token_indexers&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;tokens&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;SingleIdTokenIndexer&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;namespace&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;target_tokens&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)})&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Note that we need to use &lt;code&gt;WordTokenizer&lt;/code&gt; on the source side but &lt;code&gt;CharacterTokenizer&lt;/code&gt; on the target side. This is because we want to use words as the basic unit in English while we want to use characters as the basic unit in Chinese. As you can see above, written Chinese doesn't use whitespace to tokenize words. You could pre-tokenize Chinese sentences using word-tokenization tools such as &lt;a href="https://github.com/fxsjy/jieba"&gt;jieba&lt;/a&gt; or &lt;a href="https://nlp.stanford.edu/software/segmenter.shtml"&gt;Stanford Chinese word segmentor&lt;/a&gt;. You could alternatively use &lt;a href="https://arxiv.org/abs/1508.07909"&gt;byte-pair encoding (BPE)&lt;/a&gt;, which is an increasingly popular way to segment text in any language in an unsupervised manner for neural network models. However, in this article we'll simply use characters as proxy for words.     &lt;/p&gt;
+&lt;p&gt;One tricky part here is the namespace. A namespace in AllenNLP is something like a prefix added to the vocabulary index. We need to specify different namespaces for the source and the target side, because failing to do so could lead to vocabulary from both languages mixed up. For example, you don't want &lt;em&gt;chat&lt;/em&gt; in French (meaning &lt;em&gt;cat&lt;/em&gt;) to be confused with &lt;em&gt;chat&lt;/em&gt; in English, right? However, the risk of this happening is a lot lower between English and Chinese.&lt;/p&gt;
+&lt;h2&gt;Encoder and Decoder&lt;/h2&gt;
+&lt;p&gt;A neural machine translation model is comprised of two parts—an encoder and a decoder. The encoder's job is to receive the source sentence as the input and convert it to some intermediate representation, usually a vector or a series of vectors. The decoder receives this representation and produces the target sentence. Translation generation is usually &lt;em&gt;auto-regressive&lt;/em&gt;, meaning that the generation is conditioned on the encoder representation and the history, i.e., the words already generated by the decoder.&lt;/p&gt;
+&lt;h2&gt;Vanilla Seq2Seq Model&lt;/h2&gt;
+&lt;p&gt;Neural network models that generates a sequence from another sequence using the encoder-decoder architecture are called sequence-to-sequence (or more simply, Seq2Seq) models. The simplest type of Seq2Seq model is just a combination of an RNN-based encoder and decoder: &lt;/p&gt;
+&lt;figure style="text-align: center"&gt;
+    &lt;img src="images/seq2seq-encoder.png"/&gt;
+    &lt;figcaption&gt;Figure: RNN-based Encoder&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&lt;figure style="text-align: center"&gt;
+    &lt;img src="images/seq2seq-decoder.png"/&gt;
+    &lt;figcaption&gt;Figure: RNN-based Decoder&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&lt;p&gt;"RNN" in the figures above are RNN cells, which are the atomic unit of computation for RNNs. In this article, we use LSTM (long short term memory). In the vanilla Seq2Seq model, the encoder representation is just a vector, whose length is the same as the hidden size of the RNN. In other words, the encoder is trying to "compress" the entire sentence into just a fixed-sized, one-dimensional vector. If you think this is a very challenging task, hold that thought for now. I'll get to it later.&lt;/p&gt;
+&lt;p&gt;AllenNLP provides a very convenient &lt;code&gt;Seq2SeqEncoder&lt;/code&gt; abstraction. You can initialize this by passing PyTorch's RNN modules, as in:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;encoder&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;PytorchSeq2SeqWrapper&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;
+    &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;LSTM&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;EN_EMBEDDING_DIM&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;HIDDEN_DIM&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;batch_first&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;True&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;There is no separate abstraction for decoder (yet) in AllenNLP, but it provides the &lt;code&gt;SimpleSeq2Seq&lt;/code&gt; class, which takes care of running the encoder and generating the output sequence by decoding based on a hard-coded LSTM decoder:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;SimpleSeq2Seq&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;source_embedder&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;encoder&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;max_decoding_steps&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                      &lt;span class="n"&gt;target_embedding_dim&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;ZH_EMBEDDING_DIM&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                      &lt;span class="n"&gt;target_namespace&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;target_tokens&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                      &lt;span class="n"&gt;beam_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;8&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                      &lt;span class="n"&gt;use_bleu&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;True&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The details of decoding and beam search are out of the scope of this article—there are great learning resources online (for example, this &lt;a href="https://guillaumegenthial.github.io/sequence-to-sequence.html"&gt;blog article&lt;/a&gt;) if you are interested in learning more!&lt;/p&gt;
+&lt;p&gt;Notice I added &lt;code&gt;use_bleu=True&lt;/code&gt; here. This means that, in addition to the training loss (cross entropy), the training process monitors BLEU, the most commonly used evaluation metric for translation quality. BLEU comes up with a score that is correlated with human evaluation by comparing the prediction from the MT system with &lt;em&gt;references&lt;/em&gt;, which are human translated sentences for the input. See &lt;a href="https://en.wikipedia.org/wiki/BLEU"&gt;the Wikipedia article&lt;/a&gt; for more details.&lt;/p&gt;
+&lt;h2&gt;Training and Evaluation&lt;/h2&gt;
+&lt;p&gt;With the model defined, you can train it using the regular &lt;code&gt;Trainer&lt;/code&gt; class as follows:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;trainer&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Trainer&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                  &lt;span class="n"&gt;optimizer&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;optimizer&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                  &lt;span class="n"&gt;iterator&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;iterator&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                  &lt;span class="n"&gt;train_dataset&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;train_dataset&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                  &lt;span class="n"&gt;validation_dataset&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;validation_dataset&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                  &lt;span class="n"&gt;num_epochs&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                  &lt;span class="n"&gt;cuda_device&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;CUDA_DEVICE&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;i&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;range&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;50&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;Epoch: {}&amp;#39;&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;format&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;i&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+    &lt;span class="n"&gt;trainer&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;train&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+    &lt;span class="n"&gt;predictor&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;SimpleSeq2SeqPredictor&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;reader&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;instance&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;itertools&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;islice&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;validation_dataset&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;10&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="k"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;SOURCE:&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;instance&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;fields&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;source_tokens&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;tokens&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="k"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;GOLD:&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;instance&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;fields&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;target_tokens&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;tokens&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="k"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;PRED:&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;predictor&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;predict_instance&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;instance&lt;/span&gt;&lt;span class="p"&gt;)[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;predicted_tokens&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;I made a small modification here so that we can monitor the progress of training by taking a peek into how the first 10 instances in the validation dataset are translated at every epoch. This can be easily achieved by passing an instance from the validation set to a &lt;code&gt;SimpleSeq2SeqPredictor&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;If you run this, you'll see a report like the one below at every epoch. This is what I got after 50 epochs using the model described so far:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;12/08/2018 21:25:02 - INFO - allennlp.training.trainer -            Training |  Validation
+12/08/2018 21:25:02 - INFO - allennlp.training.trainer -   loss |     0.288  |     4.690
+12/08/2018 21:25:02 - INFO - allennlp.training.trainer -   BLEU |       N/A  |     0.083
+12/08/2018 21:25:02 - INFO - allennlp.training.trainer -   Epoch duration: 00:00:51
+SOURCE: [@start@, I, have, to, go, to, sleep, ., @end@]
+GOLD: [@start@, 我, 该, 去, 睡, 觉, 了, 。, @end@]
+PRED: [&amp;#39;我&amp;#39;, &amp;#39;该&amp;#39;, &amp;#39;去&amp;#39;, &amp;#39;睡&amp;#39;, &amp;#39;觉&amp;#39;, &amp;#39;了&amp;#39;, &amp;#39;。&amp;#39;]
+SOURCE: [@start@, I, just, do, n&amp;#39;t, know, what, to, say, ., @end@]
+GOLD: [@start@, 我, 就, 是, 不, 知, 道, 說, 些, 什, 麼, 。, @end@]
+PRED: [&amp;#39;我&amp;#39;, &amp;#39;不&amp;#39;, &amp;#39;相&amp;#39;, &amp;#39;信&amp;#39;, &amp;#39;汤&amp;#39;, &amp;#39;姆&amp;#39;, &amp;#39;。&amp;#39;]
+...
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;If you look at how these sentences are translated, the prediction for the first sentence matches GOLD exactly, while the second one is completely off:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;SOURCE: I have to go to sleep.
+GOLD: 我该去睡觉了。
+PRED: 我该去睡觉了。
+
+SOURCE: I just don&amp;#39;t know what to say.
+GOLD: 我就是不知道說些什麼。
+PRED: 我不相信汤姆。 (&amp;quot;I don&amp;#39;t believe Tom.&amp;quot;)
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;You'll notice the same trend by looking at other sentences in the validation dataset. In general, vanilla Seq2Seq MT systems are good at "hallucinating" good translations, i.e., translations that are fluent but have little to do with the source sentence. This is reflected by the low BLEU score (0.083) here.&lt;/p&gt;
+&lt;p&gt;If you remember the architecture of this Seq2Seq model, this low performance seems pretty much inevitable. All the decoder knows about the source sentence is a fixed-length (in this case, 256 dimensional) real-valued vector, no matter how long or complex the sentence is. You may be able to represent something simple, like "Hello" or "He is Tom." but imagine being asked to reproduce "I'm not a real fish, I'm just a mere plush." from 256 numbers. In other words, the fixed-length encoder representation is a huge bottleneck for vanilla Seq2Seq models. &lt;/p&gt;
+&lt;h2&gt;Attention&lt;/h2&gt;
+&lt;p&gt;The attention mechanism, first proposed by &lt;a href="https://arxiv.org/abs/1409.0473"&gt;Bahdanau et al., 2014&lt;/a&gt;, solves this bottleneck by introducing an additional information pathway from the encoder to the decoder. In general, attention is a memory access mechanism similar to a key-value store. You have a database of "things" represented by values that are indexed by keys. You use a query and similarity between the query and the keys to retrieve the relevant information. In neural networks, keys, values, and queries are all represented by vectors (or generally, tensors). &lt;/p&gt;
+&lt;p&gt;In Seq2Seq Models with attention, keys, values, and queries are as follows: &lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;keys ... RNN hidden states from the encoder&lt;/li&gt;
+&lt;li&gt;values ... RNN hidden states from the encoder (same as keys)&lt;/li&gt;
+&lt;li&gt;query ... RNN hidden state at the previous timestep from the decoder&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Using those, the decoding proceeds as follows:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Encode the source sentence. This produces a total of N vectors each of which corresponds to the RNN hidden states at time t (N is the length of the source sentence). These N vectors become keys and values.&lt;/li&gt;
+&lt;li&gt;Decode one word at a time. When decoding the word at time t, use the RNN hidden states at t-1 as the query.&lt;/li&gt;
+&lt;li&gt;Calculate the "similarity" between the query and each of the N keys using some function (will be discussed below). This will produce a total of N "scores" that capture the similarities between the query and the keys.&lt;/li&gt;
+&lt;li&gt;Apply softmax over the N scores, which produces a probability distribution over the input tokens. These are called &lt;em&gt;attention weights&lt;/em&gt;.&lt;/li&gt;
+&lt;li&gt;Compute the weighted sum of values using the attention weights. This will produce a single vector called &lt;em&gt;context vector&lt;/em&gt; whose length is the same as the hidden states.&lt;/li&gt;
+&lt;li&gt;Finally, add the context vector to the hidden states at t-1 and use both for decoding the next word. &lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;You can think of attention as a mechanism to peek into relevant parts of the input sentence that help predict the next word. If you have experience translating between two languages, you may notice this is somewhat similar to what human translators do while translating. They constantly refer to relevant parts of the original sentence while translating. The following figure illustrates the architecture of a Seq2Seq model with attention.  &lt;/p&gt;
+&lt;figure style="text-align: center"&gt;
+    &lt;img src="images/seq2seq-attention.png"/&gt;
+    &lt;figcaption&gt;Figure: Seq2Seq Model with Attention&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&lt;p&gt;AllenNLP provides abstractions for attention. &lt;code&gt;LinearAttention&lt;/code&gt; is what you need if you'd like to replicate what's done in (Bahdanau et al., 2014). If you are interested in the mathematical details, read &lt;a href="https://guillaumegenthial.github.io/sequence-to-sequence.html"&gt;this excellent blog article&lt;/a&gt;. &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;attention&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;LinearAttention&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;HIDDEN_DIM&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;HIDDEN_DIM&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;activation&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;Activation&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;by_name&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;tanh&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)())&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Don't forget to pass the attention to &lt;code&gt;SimpleSeq2Seq&lt;/code&gt;!&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;SimpleSeq2Seq&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;source_embedder&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;encoder&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;max_decoding_steps&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                      &lt;span class="n"&gt;target_embedding_dim&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;ZH_EMBEDDING_DIM&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                      &lt;span class="n"&gt;target_namespace&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;target_tokens&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                      &lt;span class="n"&gt;attention&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;attention&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;   &lt;span class="c1"&gt;# pass attention&lt;/span&gt;
+                      &lt;span class="n"&gt;beam_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;8&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                      &lt;span class="n"&gt;use_bleu&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;True&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;This is what I got after adding attention and retraining the model:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;12/09/2018 03:10:36 - INFO - allennlp.training.trainer -            Training |  Validation
+12/09/2018 03:10:36 - INFO - allennlp.training.trainer -   BLEU |       N/A  |     0.118
+12/09/2018 03:10:36 - INFO - allennlp.training.trainer -   loss |     0.125  |     4.561
+12/09/2018 03:10:36 - INFO - allennlp.training.trainer -   Epoch duration: 00:01:09
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;This is a great improvement (BLEU 0.083 -&amp;gt; 0.118)! If you look at the predictions, they are still not perfect but make much much more sense:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;SOURCE: I have to go to sleep.
+GOLD: 我该去睡觉了。
+PRED: 我睡觉了。 (&amp;quot;I went to sleep.&amp;quot;)
+
+SOURCE: I just don&amp;#39;t know what to say.
+GOLD: 我就是不知道說些什麼。
+PRED: 我只不知道要说什么。 (&amp;quot;I just don&amp;#39;t know what to say.&amp;quot;)
+
+SOURCE: I may give up soon and just nap instead .
+GOLD: 也许我会马上放弃然后去睡一觉。
+PRED: 我又要马上就能放弃了。 (&amp;quot;I can give up soon again.&amp;quot;)
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h2&gt;More Attention&lt;/h2&gt;
+&lt;p&gt;I mentioned above that the similarity between the query and a key is calculated by "some function."  &lt;code&gt;LinearAttention&lt;/code&gt; is one way to do this. Behind the scenes, it computes a linear transformation of the input vectors (more specifically, the concatenation of the input vectors by default), followed by a non-linear activation and a dot product. This corresponds to the &lt;em&gt;concat&lt;/em&gt; scoring function described in &lt;a href="https://arxiv.org/abs/1508.04025"&gt;(Luong et al. 2015)&lt;/a&gt;. The same paper also proposes two other alternatives to the &lt;em&gt;concat&lt;/em&gt; function, namely, &lt;em&gt;dot&lt;/em&gt; and &lt;em&gt;general&lt;/em&gt;, which can be achieved by &lt;code&gt;DotProductAttention&lt;/code&gt; and &lt;code&gt;BilinearAttention&lt;/code&gt; in AllenNLP.  &lt;/p&gt;
+&lt;p&gt;When I used &lt;code&gt;DotProductAttention&lt;/code&gt; and  &lt;code&gt;BilinearAttention&lt;/code&gt; (with default parameters) instead of &lt;code&gt;LinearAttention&lt;/code&gt;, the validation BLEU scores were 0.126 and 0.114, respectively. With this dataset, &lt;em&gt;dot&lt;/em&gt; seems to be the best choice as the scoring function, which is congruent with the results in (Luong et al. 2015).&lt;/p&gt;
+&lt;h2&gt;Transformer&lt;/h2&gt;
+&lt;p&gt;Finally, I'm going to touch upon the Transformer. The Transformer is a new encoder-decoder architecture proposed in the paper &lt;a href="https://arxiv.org/abs/1706.03762"&gt;"Attention is All You Need" (Vaswani et al. 2017)&lt;/a&gt; that relies solely on the attention mechanism instead of recurrent neural networks. It's built by stacking multiple layers of &lt;em&gt;self-attention&lt;/em&gt; layers. Self-attention is an attention architecture where all of keys, values, and queries come from the input sentence itself. One of some advantages of self-attention is that it's easier to capture longer range dependency between words. Because RNN is sequential, it takes 10 computation steps if two words are ten words apart. In self-attention, it's just one layer, because it only needs to &lt;em&gt;attend&lt;/em&gt; to it. Please refer to &lt;a href="https://jalammar.github.io/illustrated-transformer/"&gt;this wonderful blog post&lt;/a&gt; for more details about the Transformer.&lt;/p&gt;
+&lt;figure style="text-align: center"&gt;
+    &lt;img src="images/seq2seq-transformer.png"/&gt;
+    &lt;figcaption&gt;Figure: Architecture of the Transformer&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&lt;p&gt;As of this writing, AllenNLP supports a Transformer encoder, which is implemented as &lt;code&gt;StackedSelfAttentionEncoder&lt;/code&gt;. You can instantiate it as follows:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;encoder&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;StackedSelfAttentionEncoder&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;
+    &lt;span class="n"&gt;input_dim&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;EN_EMBEDDING_DIM&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+    &lt;span class="n"&gt;hidden_dim&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;HIDDEN_DIM&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+    &lt;span class="n"&gt;projection_dim&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;128&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+    &lt;span class="n"&gt;feedforward_hidden_dim&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;128&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+    &lt;span class="n"&gt;num_layers&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+    &lt;span class="n"&gt;num_attention_heads&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;8&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Please refer to the original paper or the blog post mentioned above for the details of the parameters. When I experimented with this, I had a hard time training a Transformer encoder that has more than one layer (the results were far worse than the RNN models). When I tried the combination of the parameters above, I got:   &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;12/20/2018 18:56:00 - INFO - allennlp.training.trainer -            Training |  Validation
+12/20/2018 18:56:00 - INFO - allennlp.training.trainer -   BLEU |       N/A  |     0.128
+12/20/2018 18:56:00 - INFO - allennlp.training.trainer -   loss |     0.393  |     3.704
+12/20/2018 18:56:00 - INFO - allennlp.training.trainer -   Epoch duration: 00:01:04
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;SOURCE: I have to go to sleep.
+GOLD: 我该去睡觉了。
+PRED: 我必須睡覺。 (&amp;quot;I must sleep.&amp;quot;)
+
+SOURCE: I just don&amp;#39;t know what to say.
+GOLD: 我就是不知道說些什麼。
+PRED: 我也不知道说什么。 (&amp;quot;I don&amp;#39;t know what to say either&amp;quot;)
+
+SOURCE: I may give up soon and just nap instead .
+GOLD: 也许我会马上放弃然后去睡一觉。
+PRED: 我可能趕上，但卻以後悔負。(&amp;quot;I can catch up, but I&amp;#39;ll regret it later.&amp;quot;)
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Not all the predictions here are grammatical and some of them are overly "creative", but overall the performance is comparable to the best RNN model with the &lt;em&gt;dot&lt;/em&gt; attention we saw above.&lt;/p&gt;
+&lt;p&gt;OK, that's it for now. The &lt;a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/mt/mt.py"&gt;full code is here&lt;/a&gt;. I did little hyper-parameter tuning or improvement, but by looking at predictions and type of mistakes, it won't be difficult to come up with a couple of improvement ideas quickly. Hope you enjoy building your own MT systems using AllenNLP as much as I did!&lt;/p&gt;</content><category term="Machine Translation"></category><category term="Seq2Seq"></category><category term="AllenNLP"></category></entry><entry><title>Improving a Sentiment Analyzer using ELMo — Word Embeddings on Steroids</title><link href="http://www.realworldnlpbook.com/blog/improving-sentiment-analyzer-using-elmo.html" rel="alternate"></link><published>2018-10-27T00:00:00-04:00</published><updated>2018-10-27T00:00:00-04:00</updated><author><name>Masato Hagiwara</name></author><id>tag:www.realworldnlpbook.com,2018-10-27:/blog/improving-sentiment-analyzer-using-elmo.html</id><summary type="html">&lt;p&gt;In the &lt;a href="training-sentiment-analyzer-using-allennlp.html"&gt;previous post&lt;/a&gt;, I showed how to train a sentiment classifier from the Stanford Sentiment TreeBank. Thanks to a very powerful deep NLP framework, &lt;a href="https://allennlp.org/"&gt;AllenNLP&lt;/a&gt;, we were able to write the entire training pipeline in less than 100 lines of Python code. &lt;/p&gt;
 &lt;p&gt;In this post, I'm going to explain …&lt;/p&gt;</summary><content type="html">&lt;p&gt;In the &lt;a href="training-sentiment-analyzer-using-allennlp.html"&gt;previous post&lt;/a&gt;, I showed how to train a sentiment classifier from the Stanford Sentiment TreeBank. Thanks to a very powerful deep NLP framework, &lt;a href="https://allennlp.org/"&gt;AllenNLP&lt;/a&gt;, we were able to write the entire training pipeline in less than 100 lines of Python code. &lt;/p&gt;
 &lt;p&gt;In this post, I'm going to explain how to improve the sentiment analyzer using ELMo.&lt;/p&gt;
 &lt;h2&gt;What are Word Embeddings?&lt;/h2&gt;
