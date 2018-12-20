@@ -1,4 +1,4 @@
-Title: Buidling Seq2Seq Machine Translation Models using AllenNLP
+Title: Building Seq2Seq Machine Translation Models using AllenNLP
 Date: 2018-12-06 00:00
 Category: Machine Translation
 Tags: Machine Translation, Seq2Seq, AllenNLP
