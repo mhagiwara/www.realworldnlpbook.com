@@ -1,0 +1,470 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="HandheldFriendly" content="True" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="" />
+
+  <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro|Source+Sans+Pro:300,400,400i,700" rel="stylesheet">
+
+    <link rel="stylesheet" type="text/css" href="http://www.realworldnlpbook.com/blog/theme/stylesheet/style.min.css">
+
+  <link rel="stylesheet" type="text/css" href="http://www.realworldnlpbook.com/blog/theme/pygments/monokai.min.css">
+  <link rel="stylesheet" type="text/css" href="http://www.realworldnlpbook.com/blog/theme/font-awesome/css/font-awesome.min.css">
+
+
+    <link href="http://www.realworldnlpbook.com/blog/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Real-World Natural Language Processing Atom">
+
+
+
+<!-- Google Analytics -->
+<script type="text/javascript">
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-175204-17', 'auto');
+  ga('send', 'pageview');
+</script>
+<!-- End Google Analytics -->
+
+<meta name="author" content="Masato Hagiwara" />
+<meta name="description" content="In the last three posts, I talked mainly about how to train NLP models using AllenNLP. AllenNLP is a great NLP framework especially for quickly prototyping research models. However, it is not optimized for scalability or portability, and it comes with a ton of dependencies that are handy when you …" />
+<meta name="keywords" content="Part-of-speech Tagging, Sequential Labeling, AllenNLP, ONNX, Caffe2, TensorFlow">
+
+<meta property="og:site_name" content="Real-World Natural Language Processing"/>
+<meta property="og:title" content="How to Convert an AllenNLP model and Deploy on Caffe2 and TensorFlow"/>
+<meta property="og:description" content="In the last three posts, I talked mainly about how to train NLP models using AllenNLP. AllenNLP is a great NLP framework especially for quickly prototyping research models. However, it is not optimized for scalability or portability, and it comes with a ton of dependencies that are handy when you …"/>
+<meta property="og:locale" content="en_US"/>
+<meta property="og:url" content="http://www.realworldnlpbook.com/blog/how-to-convert-an-allennlp-model-and-deploy-on-caffe2-and-tensorflow.html"/>
+<meta property="og:type" content="article"/>
+<meta property="article:published_time" content="2019-01-09 00:00:00-05:00"/>
+<meta property="article:modified_time" content=""/>
+<meta property="article:author" content="http://www.realworldnlpbook.com/blog/author/masato-hagiwara.html">
+<meta property="article:section" content="Part-of-speech Tagging"/>
+<meta property="article:tag" content="Part-of-speech Tagging"/>
+<meta property="article:tag" content="Sequential Labeling"/>
+<meta property="article:tag" content="AllenNLP"/>
+<meta property="article:tag" content="ONNX"/>
+<meta property="article:tag" content="Caffe2"/>
+<meta property="article:tag" content="TensorFlow"/>
+<meta property="og:image" content="http://www.realworldnlpbook.com/blog/images/pos.png">
+
+  <title>How to Convert an AllenNLP model and Deploy on Caffe2 and TensorFlow &ndash; Real-World Natural Language Processing</title>
+
+</head>
+<body>
+  <aside>
+    <div>
+      <a href="http://www.realworldnlpbook.com/blog">
+        <img src="http://masatohagiwara.net/img/profile.jpg" alt="Real-World Natural Language Processing" title="Real-World Natural Language Processing">
+      </a>
+      <h1><a href="http://www.realworldnlpbook.com/blog">Real-World Natural Language Processing</a></h1>
+
+<p>NLP recipes and best practices <br/>from the Manning book "Real-World NLP"</p>
+      <nav>
+        <ul class="list">
+
+          <li><a href="http://www.realworldnlpbook.com/" target="_blank">Real-World NLP Book</a></li>
+          <li><a href="http://masatohagiwara.net/" target="_blank">Masato Hagiwara</a></li>
+          <li><a href="https://www.manning.com/" target="_blank">Manning Publications</a></li>
+        </ul>
+      </nav>
+
+      <ul class="social">
+        <li><a class="sc-envelope" href="mailto: hagisan@gmail.com" target="_blank"><i class="fa fa-envelope"></i></a></li>
+        <li><a class="sc-twitter" href="https://twitter.com/mhagiwara" target="_blank"><i class="fa fa-twitter"></i></a></li>
+        <li><a class="sc-github" href="https://github.com/mhagiwara/realworldnlp" target="_blank"><i class="fa fa-github"></i></a></li>
+      </ul>
+    </div>
+
+
+  </aside>
+  <main>
+
+
+<article class="single">
+  <header>
+      
+    <h1 id="how-to-convert-an-allennlp-model-and-deploy-on-caffe2-and-tensorflow">How to Convert an AllenNLP model and Deploy on Caffe2 and TensorFlow</h1>
+    <p>
+          Posted on Wed 09 January 2019 in <a href="http://www.realworldnlpbook.com/blog/category/part-of-speech-tagging.html">Part-of-speech Tagging</a>
+
+
+    </p>
+  </header>
+
+
+  <div>
+    <p>In the <a href="http://www.realworldnlpbook.com/blog/training-sentiment-analyzer-using-allennlp.html">last</a> <a href="http://www.realworldnlpbook.com/blog/improving-sentiment-analyzer-using-elmo.html">three</a> <a href="http://www.realworldnlpbook.com/blog/building-seq2seq-machine-translation-models-using-allennlp.html">posts</a>, I talked mainly about how to train NLP models using <a href="https://allennlp.org/">AllenNLP</a>. AllenNLP is a great NLP framework especially for quickly prototyping research models. However, it is not optimized for scalability or portability, and it comes with a ton of dependencies that are handy when you are doing research but you may not want in your production environment.</p>
+<p>On the other hand, there are other deep learning frameworks that excel in different areas. For example, Caffe2 is designed for scale and portability, especially mobile deployment. TensorFlow, probably the most popular deep learning framework as of today, also has <a href="https://www.tensorflow.org/lite/">TF Lite</a> and <a href="https://js.tensorflow.org/">TensorFlow.js</a>, which enable mobile and Web deployment of TensorFlow models, respectively. </p>
+<p>Is it possible to still use AllenNLP to quickly prototype and train NLP models and deploy them using other frameworks mentioned above? The answer is yes, and this article explains how.  </p>
+<h2>Part-of-Speech (POS) Tagging and Universal POS Tagset</h2>
+<p>The NLP task I'm going to use throughout this article is part-of-speech tagging. It's time for some Linguistic 101. A <em>part of speech (POS)</em> is a category of words that share similar grammatical properties, such as nouns (<em>person</em>, <em>pizza</em>, <em>tree</em>, <em>freedom</em>, etc. etc.) and verbs (<em>look</em>, <em>run</em>, <em>know</em>, etc. etc). The English language has other parts of speech including:</p>
+<ul>
+<li>Adjectives (<em>green</em>, <em>furious</em>)</li>
+<li>Adverbs (<em>cheerfully</em>, <em>almost</em>)</li>
+<li>Determiners (<em>a</em>, <em>the</em>, <em>this</em>, <em>that</em>)</li>
+<li>Prepositions (<em>in</em>, <em>from</em>, <em>with</em>)</li>
+<li>Conjunctions (<em>and</em>, <em>yet</em>, <em>because</em>)</li>
+<li>... and many others</li>
+</ul>
+<p>Almost all languages we speak here on earth have nouns and verbs. If you speak some languages other than English, you may know that other parts of speech differ from languages to languages. For example, many languages, such as Hungarian, Turkish, and Japanese, have <em>postpositions</em> instead of prepositions, which are placed <em>after</em> words to add some extra meaning to them. </p>
+<p>A part-of-speech tagger is an NLP system that automatically tags each word in a sentence with a corresponding part-of-speech tag. For example, if you run a Penn-Treebank-style pos tagger on a sentence "I saw a girl with a telescope." you'll get the following result: </p>
+<table>
+<thead>
+<tr>
+<th>PRP</th>
+<th>VBD</th>
+<th>DT</th>
+<th>NN</th>
+<th>IN</th>
+<th>DT</th>
+<th>NN</th>
+<th>.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>I</td>
+<td>saw</td>
+<td>a</td>
+<td>girl</td>
+<td>with</td>
+<td>a</td>
+<td>telescope</td>
+<td>.</td>
+</tr>
+</tbody>
+</table>
+<p>Part-of-speech taggers play an important role in NLP pipelines and applications. Traditionally, part-of-speech taggers were trained per language and tagset. One tagset in one language is not compatible with another. Due to growing interests in multi-lingual NLP technologies that are applicable across various languages, a group of NLP researchers came up with a set of tags that cover frequent parts of speech that exist in most languages, called a <a href="http://universaldependencies.org/u/pos/">universal part-of-speech tagset</a>. This tagset groups parts of speech in various languages into a common set of coarse tags, such as NOUN, VERB, ADJ, etc. It is widely used for multi-lingual NLP tasks.   </p>
+<h2>Using Universal Dependencies Corpora</h2>
+<p>In this post, we are going to train a part-of-speech tagger that follows the universal POS taget standard. A large number of text corpora annotated with the universal POS tagset are distributed at <a href="http://universaldependencies.org/">the Universal Dependencies website</a> under very permissible license (Creative Commons in most cases). Let's go ahead and download the tar+gzipped archive of all universal dependencies corpora from <a href="https://lindat.mff.cuni.cz/repository/xmlui/handle/11234/1-2895">this page</a> and extract the contents. This will create a directory named <code>ud-treebanks-v2.3</code> with a bunch of subdirectories corresponding to various text corpora in many languages.   </p>
+<p>We are going to use the English Web Treebank dataset, which can be found under the <code>UD_English-EWT</code> subdirectory. The dataset contains texts in various genres including blogs, newsgroups, email, reviews, and so on. The first several lines of the training data in <code>UD_English-EWT/en_ewt-ud-train.conllu</code> look like the following:  </p>
+<div class="highlight"><pre><span></span># newdoc id = weblog-juancole.com_juancole_20051126063000_ENG_20051126_063000
+# sent_id = weblog-juancole.com_juancole_20051126063000_ENG_20051126_063000-0001
+# text = Al-Zaman : American forces killed Shaikh Abdullah al-Ani, the preacher at the mosque in the town of Qaim, near the Syrian border.
+1       Al      Al      PROPN   NNP     Number=Sing     0       root    0:root  SpaceAfter=No
+2       -       -       PUNCT   HYPH    _       1       punct   1:punct SpaceAfter=No
+3       Zaman   Zaman   PROPN   NNP     Number=Sing     1       flat    1:flat  _
+4       :       :       PUNCT   :       _       1       punct   1:punct _
+5       American        american        ADJ     JJ      Degree=Pos      6       amod    6:amod  _
+6       forces  force   NOUN    NNS     Number=Plur     7       nsubj   7:nsubj _
+7       killed  kill    VERB    VBD     Mood=Ind|Tense=Past|VerbForm=Fin        1       parataxis       1:parataxis     _
+8       Shaikh  Shaikh  PROPN   NNP     Number=Sing     7       obj     7:obj   _
+9       Abdullah        Abdullah        PROPN   NNP     Number=Sing     8       flat    8:flat  _
+10      al      al      PROPN   NNP     Number=Sing     8       flat    8:flat  SpaceAfter=No
+11      -       -       PUNCT   HYPH    _       8       punct   8:punct SpaceAfter=No
+12      Ani     Ani     PROPN   NNP     Number=Sing     8       flat    8:flat  SpaceAfter=No
+13      ,       ,       PUNCT   ,       _       8       punct   8:punct _
+...
+</pre></div>
+
+
+<p>The universal dependencies datasets are in the <a href="http://universaldependencies.org/format.html">CONLL-U</a> format. Its details are out of the scope of this article, but you can see universal POS tags in the fourth column (<code>PROPN</code>, <code>PUNCT</code>, <code>PROPN</code>, <code>PUNCT</code>, <code>ADJ</code>, ...). The corpus also has a lot of other information, including morphological tags and dependency tags, but we are not going to use them here.</p>
+<h2>Training a Universal POS Tagger using AllenNLP</h2>
+<p>First, let's train a POS tagger using AllenNLP in a standard way. It is very easy to read universal dependencies files using AllenNLP. The framework already implements <code>UniversalDependenciesDatasetReader</code>, which takes care of reading dataset files in the CONLL-U format:</p>
+<div class="highlight"><pre><span></span><span class="n">reader</span> <span class="o">=</span> <span class="n">UniversalDependenciesDatasetReader</span><span class="p">()</span>
+<span class="n">train_dataset</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;data/ud-treebanks-v2.3/UD_English-EWT/en_ewt-ud-train.conllu&#39;</span><span class="p">)</span>
+<span class="n">dev_dataset</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;data/ud-treebanks-v2.3/UD_English-EWT/en_ewt-ud-dev.conllu&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The rest of the training pipeline looks almost identical to the <a href="https://allennlp.org/tutorials">official AllenNLP tutorial</a>, except there are a couple of changes you need to make.</p>
+<p>The first change is the <code>LstmTagger</code> model. Because we are dealing with instances created from the universal dependencies format that have a couple of extra fields in addition to <code>words</code> and <code>pos_tags</code> and AllenNLP automatically "destructures" fields in instances as parameters to <code>forward()</code>, you need to change the signature of the <code>forward()</code> method to accommodate it (notice <code>forward()</code> has an extra <code>**args</code>):</p>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">LstmTagger</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">embedder</span><span class="p">:</span> <span class="n">TextFieldEmbedder</span><span class="p">,</span>
+                 <span class="n">encoder</span><span class="p">:</span> <span class="n">Seq2SeqEncoder</span><span class="p">,</span>
+                 <span class="n">vocab</span><span class="p">:</span> <span class="n">Vocabulary</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">vocab</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">embedder</span> <span class="o">=</span> <span class="n">embedder</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span> <span class="o">=</span> <span class="n">encoder</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hidden2tag</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">in_features</span><span class="o">=</span><span class="n">encoder</span><span class="o">.</span><span class="n">get_output_dim</span><span class="p">(),</span>
+                                          <span class="n">out_features</span><span class="o">=</span><span class="n">vocab</span><span class="o">.</span><span class="n">get_vocab_size</span><span class="p">(</span><span class="s1">&#39;pos&#39;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">accuracy</span> <span class="o">=</span> <span class="n">CategoricalAccuracy</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                <span class="n">words</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+                <span class="n">pos_tags</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">args</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">get_text_field_mask</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+        <span class="n">embeddings</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">embedder</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+        <span class="n">encoder_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="p">(</span><span class="n">embeddings</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
+        <span class="n">tag_logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden2tag</span><span class="p">(</span><span class="n">encoder_out</span><span class="p">)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;tag_logits&quot;</span><span class="p">:</span> <span class="n">tag_logits</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">pos_tags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">accuracy</span><span class="p">(</span><span class="n">tag_logits</span><span class="p">,</span> <span class="n">pos_tags</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
+            <span class="n">output</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sequence_cross_entropy_with_logits</span><span class="p">(</span><span class="n">tag_logits</span><span class="p">,</span> <span class="n">pos_tags</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">output</span>
+</pre></div>
+
+
+<p>The rest of the model is almost the same as the model in the AllenNLP tutorial, which is the standard LSTM-RNN sequential labeling model (see below for the architecture diagram). The input is fed to the RNN token by token, after a word embedding layer. LSTM updates its internal states at each timestep, which are used as "output" from LSTM. The output tensors are fed to a linear layer, which then produces tensors that have the same dimension as the total number of POS tags. After a sofmax layer, this gives you a probability distribution over the POS tags. The model is trained using the standard cross entropy loss.</p>
+<figure style="text-align: center">
+    <img src="images/pos.png"/>
+    <figcaption>Figure: RNN-based Universal POS Tagger</figcaption>
+</figure>
+
+<p>The second change is less important—you need to implement a predictor  if you'd like to check if the model is working as expected. I'm not listing the entire code for the predictor here. If you are interested, you can <a href="https://github.com/mhagiwara/realworldnlp/blob/master/realworldnlp/predictors.py#L27">see it from here</a>.</p>
+<p>When you run the <a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/pos/pos_tagger.py">training script</a> for 10 epochs, the metrics should look like this: </p>
+<div class="highlight"><pre><span></span>                     Training |  Validation
+   accuracy      |     0.962  |     0.884
+   loss          |     0.096  |     0.494
+</pre></div>
+
+
+<p>You'll also see the correct sequnce of POS tags for the example sentence "Time flies like an arrow.": <code>['DET', 'NOUN', 'VERB', 'DET', 'NOUN', 'PUNCT']</code>. This is not a bad start!</p>
+<h2>Making an AllenNLP Model "ONNX Friendly"</h2>
+<p>Now that we are a working POS tagger model, let's start the process of converting and deploying it using other frameworks. The first step is to convert the neural network model to <a href="https://onnx.ai/">the ONNX format</a>, which is an open standard to represent deep neural network models.</p>
+<p>Unfortunately, the design of standard AllenNLP models is specific to the framework, which makes it difficult to export the model as is—you can't just follow <a href="https://pytorch.org/tutorials/advanced/super_resolution_with_caffe2.html">the PyTorch tutorial</a> to convert it to the ONNX format. </p>
+<p>There are a couple of factors about AllenNLP models that make the straightforward conversion to ONNX difficult, which I'm going to address one by one in the following.</p>
+<ul>
+<li>
+<p>Dependency — AllenNLP models rely on <code>Vocabulary</code> internally, while ONNX models can't have internal states. You need to externalize such dependencies before converting them.  </p>
+</li>
+<li>
+<p>Input/Output interface — AllenNLP models can take dictionaries as input and produce a dictionary as output. On the other hand, ONNX models pretty much only support tensors as inputs and outputs.</p>
+</li>
+<li>
+<p>Control flow — some AllenNLP models put the data through some pipelines that contain a lot of dynamic control flow behind the scenes. For example, the <code>PytorchSeq2SeqWrapper</code> model we used in the training script above does a large amount of "dirty work" such as taking care of empty sequences and sorting sequences by their lengths etc. While this is great for research prototyping, ONNX doesn't support such dynamic control flows.</p>
+</li>
+</ul>
+<p>To address the points above, the solution I came up is to separate a "pure PyTorch" model from the AllenNLP model, so that the former doesn't contain any of the above. Specifically, I defined a pure PyTorch, ONNX-friendly model <code>LstmTaggerInnerModel</code> as follows:</p>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">LstmTaggerInnerModel</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">embedding</span><span class="p">:</span> <span class="n">Embedding</span><span class="p">,</span>
+                 <span class="n">encoder</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
+                 <span class="n">encoder_output_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                 <span class="n">label_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">embedding</span> <span class="o">=</span> <span class="n">embedding</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span> <span class="o">=</span> <span class="n">encoder</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hidden2tag</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">in_features</span><span class="o">=</span><span class="n">encoder_output_size</span><span class="p">,</span>
+                                          <span class="n">out_features</span><span class="o">=</span><span class="n">label_size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">mask</span><span class="p">):</span>
+        <span class="n">embedded_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">embedding</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">lengths</span> <span class="o">=</span> <span class="n">get_lengths_from_binary_sequence_mask</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+        <span class="n">packed_x</span> <span class="o">=</span> <span class="n">pack_padded_sequence</span><span class="p">(</span><span class="n">embedded_x</span><span class="p">,</span> <span class="n">lengths</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">encoder_out</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="p">(</span><span class="n">packed_x</span><span class="p">)</span>
+        <span class="n">unpacked</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">pad_packed_sequence</span><span class="p">(</span><span class="n">encoder_out</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">tag_logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden2tag</span><span class="p">(</span><span class="n">unpacked</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">tag_logits</span>
+</pre></div>
+
+
+<p>You can wrap this inner model by the original <code>LstmTagger</code> as follows:</p>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">LstmTagger</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">inner_model</span><span class="p">:</span> <span class="n">LstmTaggerInnerModel</span><span class="p">,</span>
+                 <span class="n">vocab</span><span class="p">:</span> <span class="n">Vocabulary</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">vocab</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inner_model</span> <span class="o">=</span> <span class="n">inner_model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">accuracy</span> <span class="o">=</span> <span class="n">CategoricalAccuracy</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                <span class="n">words</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+                <span class="n">pos_tags</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">args</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+        <span class="n">tokens</span> <span class="o">=</span> <span class="n">words</span><span class="p">[</span><span class="s1">&#39;tokens&#39;</span><span class="p">]</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">get_text_field_mask</span><span class="p">(</span><span class="n">words</span><span class="p">)</span>
+
+        <span class="c1"># By default, instances from BucketIterator are sorted in an ascending order of</span>
+        <span class="c1"># sequences lengths, but pack_padded_sequence expects a descending order</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">tokens</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">tokens</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">pos_tags</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">pos_tags</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="n">tag_logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inner_model</span><span class="p">(</span><span class="n">tokens</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
+
+        <span class="n">output</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;tag_logits&quot;</span><span class="p">:</span> <span class="n">tag_logits</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">pos_tags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">accuracy</span><span class="p">(</span><span class="n">tag_logits</span><span class="p">,</span> <span class="n">pos_tags</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
+            <span class="n">output</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sequence_cross_entropy_with_logits</span><span class="p">(</span><span class="n">tag_logits</span><span class="p">,</span> <span class="n">pos_tags</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">output</span>
+
+    <span class="k">def</span> <span class="nf">get_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reset</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;accuracy&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">accuracy</span><span class="o">.</span><span class="n">get_metric</span><span class="p">(</span><span class="n">reset</span><span class="p">)}</span>
+</pre></div>
+
+
+<p>If you are not familiar with the concepts of padding, packing, and masking, I encourage you to check out <a href="https://pytorch.org/tutorials/beginner/chatbot_tutorial.html">PyTorch's official chatbot tutorial first</a>.</p>
+<p>This is almost as if you are writing pure PyTorch models from scratch.  Do you still gain anything from using AllenNLP? I'd say yes—AllenNLP still takes care of a lot of dirty work that is peripheral when training NLP models, such as building vocabulary, batching, controlling the training loop, etc, which are all non-trivial if you were to implement from scratch.</p>
+<h2>Feeding Correct Batches</h2>
+<p>Now, you need to train the "inner model" that you took out of the original AllenNLP model. Because the inner model directly calls <code>pack_padded_sequence</code>, which expects a batch where instances are sorted in an descending order of sequence lengths, you need to make sure the AllenNLP training pipeline is feeding "correct" batches to the model. This was not a problem before because the AllenNLP's <code>PytorchSeq2SeqWrapper</code> did all the dirty work. </p>
+<p>First, you need to make sure to pass <code>padding_noise=0.</code> to <code>BucketIterator</code>. Otherwise, there'd be some "noise" in the lengths of sequences in a batch, which in turn requires sorting the instances.</p>
+<div class="highlight"><pre><span></span><span class="n">iterator</span> <span class="o">=</span> <span class="n">BucketIterator</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+                          <span class="n">sorting_keys</span><span class="o">=</span><span class="p">[(</span><span class="s2">&quot;words&quot;</span><span class="p">,</span> <span class="s2">&quot;num_tokens&quot;</span><span class="p">)],</span>
+                          <span class="n">padding_noise</span><span class="o">=</span><span class="mf">0.</span><span class="p">)</span>
+</pre></div>
+
+
+<p>Also, because <code>BucketIterator</code> by default returns batches where instances are sorted in an <em>ascending</em> order of sequence lengths, you need to flip the order of instances as follows: </p>
+<div class="highlight"><pre><span></span><span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">tokens</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">tokens</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">pos_tags</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">pos_tags</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+
+
+<p>Now you are ready to train the model. See <a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/pos/train_onnx_tagger.py">here</a> for the entire training script. If you run this for 10 epochs, you'll see the metrics that are slightly different from the ones you got before:</p>
+<div class="highlight"><pre><span></span>                     Training |  Validation
+   accuracy      |     0.981  |     0.879
+   loss          |     0.052  |     0.612
+</pre></div>
+
+
+<p>Specifically, now you get slightly higher training accuracy and lower validation accuracy (and vice versa for the losses). This is a typical symptom of overfitting—the model is fitting to the training dataset too well in exchange for the validation fit. The reason might be because we removed the padding noise for <code>BucketIterator</code>. After all, adding some noise to the sequence lengths so that batches are less deterministic seems to be helping reduce overfitting!</p>
+<h2>Exporting and Deploying using Caffe2</h2>
+<p>Now that we have a trained <code>LstmTaggerInner</code> model, let's export it using the ONNX format. PyTorch supports importing and exporting from/to the ONNX format by default.  </p>
+<div class="highlight"><pre><span></span><span class="n">out_dir</span> <span class="o">=</span> <span class="s1">&#39;examples/pos&#39;</span>
+<span class="n">dummy_input</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">MAX_LEN</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
+<span class="n">dummy_mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">MAX_LEN</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
+<span class="n">torch</span><span class="o">.</span><span class="n">onnx</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">inner_model</span><span class="p">,</span>
+                  <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">dummy_input</span><span class="p">,</span> <span class="n">dummy_mask</span><span class="p">),</span>
+                  <span class="n">f</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;{out_dir}/model.onnx&#39;</span><span class="p">,</span>
+                  <span class="n">verbose</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+</pre></div>
+
+
+<p><code>MAX_LEN</code> in the code above is the maximum length of the acceptable input sequence. This can be an arbitrary integer (e.g., 20) as long as it's large enough to accommodate long input sequences in the production environment you are thinking about deploying the model to.</p>
+<p>Exporting a model to the ONNX format is done via tracing. The <code>export()</code> function executes the model and records the operators used to compute the ouputs. Therefore you need to supply the dummy inputs. <code>dummy_input</code> and <code>dummy_mask</code>, in theory, can be any tensors that have the same shapes and types as the ones that the network accepts. In practice, though, <code>dummy_mask</code> needs to be filled with 1s, because it's used to calculate the lengths in <code>inner_model</code>.</p>
+<p>You'll notice there's <code>model.onnx</code> file created after running this code snippet. You can now visualize what the network looks like using visualization tools such as <a href="https://github.com/lutzroeder/netron">Netron</a>:</p>
+<figure style="text-align: center">
+    <img src="images/pos-netron.png"/>
+    <figcaption>Figure: Visualization of the exported ONNX model</figcaption>
+</figure>
+
+<p>Also, don't forget to export the vocabulary too. Because it is no longer part of the exported model (which only knows raw word indices), you'll need to manage the word and ID conversion manually:</p>
+<div class="highlight"><pre><span></span><span class="n">vocab</span><span class="o">.</span><span class="n">save_to_files</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;{out_dir}/vocab&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<p>OK, let's try to read the ONNX model onto Caffe2. In this article, we are simply going to use <a href="https://github.com/ufoym/deepo">Deepo</a>, a series of Docker images that have commonly used deep learning frameworks pre-installed, including ONNX and Caffe2. Make sure to run the following code snippets in the Docker container.</p>
+<p>First, make sure you import necessary frameworks:</p>
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">caffe2.python.onnx.backend</span> <span class="kn">as</span> <span class="nn">onnx_caffe2_backend</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">onnx</span>
+</pre></div>
+
+
+<p>Second, read the ONNX model file we just exported:</p>
+<div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">onnx</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;examples/pos/model.onnx&#39;</span><span class="p">)</span>
+<span class="n">prepared_backend</span> <span class="o">=</span> <span class="n">onnx_caffe2_backend</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+</pre></div>
+
+
+<p>Then you need to read the vocabulary and construct the input tensors manually:</p>
+<div class="highlight"><pre><span></span><span class="n">token2id</span><span class="p">,</span> <span class="n">id2token</span> <span class="o">=</span> <span class="n">read_vocab</span><span class="p">(</span><span class="s1">&#39;examples/pos/vocab/tokens.txt&#39;</span><span class="p">)</span>
+<span class="n">pos2id</span><span class="p">,</span> <span class="n">id2pos</span> <span class="o">=</span> <span class="n">read_vocab</span><span class="p">(</span><span class="s1">&#39;examples/pos/vocab/pos.txt&#39;</span><span class="p">)</span>
+
+<span class="n">tokens</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Time&#39;</span><span class="p">,</span> <span class="s1">&#39;flies&#39;</span><span class="p">,</span> <span class="s1">&#39;like&#39;</span><span class="p">,</span> <span class="s1">&#39;an&#39;</span><span class="p">,</span> <span class="s1">&#39;arrow&#39;</span><span class="p">,</span> <span class="s1">&#39;.&#39;</span><span class="p">]</span>
+<span class="n">token_ids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="n">MAX_LEN</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
+<span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="n">MAX_LEN</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">token</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tokens</span><span class="p">):</span>
+    <span class="n">token_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">token2id</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">token2id</span><span class="p">[</span><span class="s1">&#39;@@UNKNOWN@@&#39;</span><span class="p">])</span>
+    <span class="n">mask</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+</pre></div>
+
+
+<p><code>read_vocab()</code> here reads the vocabulary file exported by AllenNLP, and returns a tuple of two mappings—one for converting token to ID, and one for the other way (ID to token). See <a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/pos/run_onnx_tagger.caffe2.py#L10">here</a> for the full definition.</p>
+<p>Finally, you can run the model as follows:</p>
+<div class="highlight"><pre><span></span><span class="n">inputs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;inputs&#39;</span><span class="p">:</span> <span class="n">token_ids</span><span class="p">,</span> <span class="s1">&#39;mask.1&#39;</span><span class="p">:</span> <span class="n">mask</span><span class="p">}</span>
+
+<span class="n">logits</span> <span class="o">=</span> <span class="n">prepared_backend</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">inputs</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">tag_ids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">tag_ids</span> <span class="o">=</span> <span class="n">tag_ids</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="n">tokens</span><span class="p">)]</span>
+<span class="k">print</span><span class="p">([</span><span class="n">id2pos</span><span class="p">[</span><span class="n">tag_id</span><span class="p">]</span> <span class="k">for</span> <span class="n">tag_id</span> <span class="ow">in</span> <span class="n">tag_ids</span><span class="p">])</span>
+</pre></div>
+
+
+<p>You should see the same result <code>['NOUN', 'NOUN', 'ADP', 'DET', 'NOUN', 'PUNCT']</code> as the one you saw previously.</p>
+<h2>Converting to the TensorFlow Format</h2>
+<p>In this final section of this article, I'm going to show how to convert the ONNX model to the TensorFlow format. But there is one caveat before starting the conversion. As far as I tried, the current version of ONNX-TensorFlow converter doesn't support one operation included in the ONNX model we just created (namely, <a href="https://github.com/onnx/onnx/issues/1383">MatMul with rank &gt; 2</a>), so you need to implement a workaround for this. </p>
+<p>The way I worked around this issue is to <code>squeeze</code> the output tensor (i.e., remove the batch dimension), pass it through the linear layer, and then <code>unsqueeze</code> it again, only when it's being exported to ONNX. I'm not sure if this is the best approach, but at least it works.</p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">mask</span><span class="p">):</span>
+    <span class="n">embedded_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">embedding</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">lengths</span> <span class="o">=</span> <span class="n">get_lengths_from_binary_sequence_mask</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+    <span class="n">packed_x</span> <span class="o">=</span> <span class="n">pack_padded_sequence</span><span class="p">(</span><span class="n">embedded_x</span><span class="p">,</span> <span class="n">lengths</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">encoder_out</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="p">(</span><span class="n">packed_x</span><span class="p">)</span>
+    <span class="n">unpacked</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">pad_packed_sequence</span><span class="p">(</span><span class="n">encoder_out</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exporting</span><span class="p">:</span>
+        <span class="n">unpacked</span> <span class="o">=</span> <span class="n">unpacked</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
+    <span class="n">tag_logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden2tag</span><span class="p">(</span><span class="n">unpacked</span><span class="p">)</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exporting</span><span class="p">:</span>
+        <span class="n">tag_logits</span> <span class="o">=</span> <span class="n">tag_logits</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tag_logits</span>
+</pre></div>
+
+
+<p>The process for loading and running an ONNX model on TensorFlow is almost the same as Caffe2. After constructing input tensors, you can simply use them as follows:</p>
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">onnx</span>
+<span class="kn">from</span> <span class="nn">onnx_tf.backend</span> <span class="kn">import</span> <span class="n">prepare</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">onnx</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;examples/pos/model.onnx&#39;</span><span class="p">)</span>
+<span class="n">tf_rep</span> <span class="o">=</span> <span class="n">prepare</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+<span class="n">logits</span> <span class="o">=</span> <span class="n">tf_rep</span><span class="o">.</span><span class="n">run</span><span class="p">((</span><span class="n">token_ids</span><span class="p">,</span> <span class="n">mask</span><span class="p">))</span><span class="o">.</span><span class="n">_0</span>
+<span class="n">tag_ids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">tag_ids</span> <span class="o">=</span> <span class="n">tag_ids</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="n">tokens</span><span class="p">)]</span>
+<span class="k">print</span><span class="p">([</span><span class="n">id2pos</span><span class="p">[</span><span class="n">tag_id</span><span class="p">]</span> <span class="k">for</span> <span class="n">tag_id</span> <span class="ow">in</span> <span class="n">tag_ids</span><span class="p">])</span>
+</pre></div>
+
+
+<p>Again, you should see the same result <code>['NOUN', 'NOUN', 'ADP', 'DET', 'NOUN', 'PUNCT']</code> printed out.</p>
+<p>That's it! Thank you for reading this article. Even though the example we used here is not complex, LSTM is such an important component in modern NLP that you should be able to convert a wide range of NLP models in a similar way. If you are feeling ambitious, you can try converting a Seq2Seq model to ONNX, which should be possible as long as you decompose the model into pure PyTorch components and you are willing to implement the dynamic control flow (i.e., decoding) manually. I'm looking forward to seeing more examples.  </p>
+<p>Finally, here is the list of scripts that I used for this article. Enjoy!</p>
+<ul>
+<li><a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/pos/pos_tagger.py">Training the POS tagger (AllenNLP version)</a></li>
+<li><a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/pos/train_onnx_tagger.py">Training the POS tagger and exporting it as the ONNX format</a></li>
+<li><a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/pos/run_onnx_tagger.caffe2.py">Reading the ONNX model and running it on Caffe2</a></li>
+<li><a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/pos/run_onnx_tagger.tf.py">Reading the ONNX model and running it on TensorFlow</a></li>
+</ul>
+  </div>
+  <div class="tag-cloud">
+    <p>
+      <a href="http://www.realworldnlpbook.com/blog/tag/part-of-speech-tagging.html">Part-of-speech Tagging</a>
+      <a href="http://www.realworldnlpbook.com/blog/tag/sequential-labeling.html">Sequential Labeling</a>
+      <a href="http://www.realworldnlpbook.com/blog/tag/allennlp.html">AllenNLP</a>
+      <a href="http://www.realworldnlpbook.com/blog/tag/onnx.html">ONNX</a>
+      <a href="http://www.realworldnlpbook.com/blog/tag/caffe2.html">Caffe2</a>
+      <a href="http://www.realworldnlpbook.com/blog/tag/tensorflow.html">TensorFlow</a>
+    </p>
+  </div>
+
+
+
+
+
+</article>
+
+    <footer>
+<p>&copy;  2018</p>
+<p>    Powered by <a href="http://getpelican.com" target="_blank">Pelican</a> - <a href="https://github.com/alexandrevicenzi/flex" target="_blank">Flex</a> theme by <a href="http://alexandrevicenzi.com" target="_blank">Alexandre Vicenzi</a>
+</p>    </footer>
+  </main>
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context" : "http://schema.org",
+  "@type" : "Blog",
+  "name": " Real-World Natural Language Processing ",
+  "url" : "http://www.realworldnlpbook.com/blog",
+  "image": "http://masatohagiwara.net/img/profile.jpg",
+  "description": ""
+}
+</script>
+
+</body>
+</html>
