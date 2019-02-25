@@ -1,0 +1,54 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-175204-17"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-175204-17');
+    </script>
+
+    <script>
+
+        function runRedirects() {
+            var url = window.location.href;
+            if (url.endsWith('#nivre17')) {
+                window.location.replace('https://www.slideshare.net/aclanthology/joakim-nivre-2017-presidential-address-acl-2017-challenges-for-acl');
+            } else if (url.endsWith('#universal-pos')) {
+                window.location.replace('http://www.lrec-conf.org/proceedings/lrec2012/pdf/274_Paper.pdf');
+            } else if (url.endsWith('#karpathy15')) {
+                window.location.replace('http://karpathy.github.io/2015/05/21/rnn-effectiveness/');
+            }
+        }
+
+        window.addEventListener("hashchange", function() {
+            runRedirects();
+        });
+
+        runRedirects();
+    </script>
+    <title>Real-World Natural Language Processing - Chapter 1 Resources</title>
+</head>
+<body>
+    <h1>Real-World Natural Language Processing — Chapter 1 Resources</h1>
+
+    <hr/>
+    <a name="tweet1"></a>
+
+    <img src="img/ch1-tweet1.png" alt="Here’s a graph showing the student enrollment in @stanford #NLProc courses over the years—it’s been up and to the right!  (CC @zehavoc)" width="640"/>
+
+    <p><a href="https://twitter.com/stanfordnlp/status/1053762313650466816">Link to the original tweet</a></p>
+
+    <hr/>
+    <a name="tweet2"></a>
+
+    <img src="img/ch1-tweet2.png" alt="There 2,500 people at #EMNLP2018, wow!" width="640"/>
+
+    <p><a href="https://twitter.com/robodasha/status/1058268926763651073">Link to the original tweet</a></p>
+
+</body>
+</html>
