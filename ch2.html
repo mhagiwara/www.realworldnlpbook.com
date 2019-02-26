@@ -1,0 +1,41 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-175204-17"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-175204-17');
+    </script>
+
+    <script>
+
+        function runRedirects() {
+            var url = window.location.href;
+            if (url.endsWith('#ptb')) {
+                window.location.replace('https://dl.acm.org/citation.cfm?id=972475');
+            } else if (url.endsWith('#socher13')) {
+                window.location.replace('https://nlp.stanford.edu/~socherr/EMNLP2013_RNTN.pdf');
+            } else if (url.endsWith('#predictor')) {
+                window.location.replace('https://github.com/mhagiwara/realworldnlp/blob/master/realworldnlp/predictors.py#L13');
+            }
+        }
+
+        window.addEventListener("hashchange", function() {
+            runRedirects();
+        });
+
+        runRedirects();
+    </script>
+    <title>Real-World Natural Language Processing - Chapter 2 Resources</title>
+</head>
+<body>
+    <h1>Real-World Natural Language Processing — Chapter 2 Resources</h1>
+
+    <hr/>
+</body>
+</html>
