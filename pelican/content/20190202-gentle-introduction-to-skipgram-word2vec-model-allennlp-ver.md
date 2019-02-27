@@ -2,7 +2,7 @@ Title: A Gentle Introduction to SkipGram (word2vec) Model — AllenNLP ver.
 Date: 2019-02-02 00:00
 Category: Word Embeddings
 Tags: Word Embeddings, word2vec, AllenNLP
-Cover: example.png
+Cover: images/skipgram.png
 slug: gentle-introduction-to-skipgram-word2vec-model-allennlp-ver
 
 The SkipGram model (so called "word2vec") is one of the most important concepts in modern NLP, yet many people simply use [its implementation](https://code.google.com/archive/p/word2vec/) and/or pre-trained embeddings, and few people fully understand how the model is actually built. In this article, I'll cover:
