@@ -1,9 +1,9 @@
-Title: SkipGram (word2vec) Model Explained (AllenNLP ver.)
+Title: A Gentle Introduction to SkipGram (word2vec) Model — AllenNLP ver.
 Date: 2019-02-02 00:00
 Category: Word Embeddings
 Tags: Word Embeddings, word2vec, AllenNLP
 Cover: example.png
-slug: skipgram-word2vec-explained-allennlp-ver
+slug: gentle-introduction-to-skipgram-word2vec-model-allennlp
 
 ## Word Embeddings
 
