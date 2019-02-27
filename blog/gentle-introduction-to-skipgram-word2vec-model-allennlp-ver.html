@@ -1,0 +1,381 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="HandheldFriendly" content="True" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="" />
+
+  <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro|Source+Sans+Pro:300,400,400i,700" rel="stylesheet">
+
+    <link rel="stylesheet" type="text/css" href="http://www.realworldnlpbook.com/blog/theme/stylesheet/style.min.css">
+
+  <link rel="stylesheet" type="text/css" href="http://www.realworldnlpbook.com/blog/theme/pygments/monokai.min.css">
+  <link rel="stylesheet" type="text/css" href="http://www.realworldnlpbook.com/blog/theme/font-awesome/css/font-awesome.min.css">
+
+
+    <link href="http://www.realworldnlpbook.com/blog/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Real-World Natural Language Processing Atom">
+
+
+
+<!-- Google Analytics -->
+<script type="text/javascript">
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-175204-17', 'auto');
+  ga('send', 'pageview');
+</script>
+<!-- End Google Analytics -->
+
+<meta name="author" content="Masato Hagiwara" />
+<meta name="description" content="The SkipGram model (so called &#34;word2vec&#34;) is one of the most important concepts in modern NLP, yet many people simply use its implementation and/or pre-trained embeddings, and few people fully understand how the model is actually built. In this article, I&#39;ll cover: What the SkipGram model is How to …" />
+<meta name="keywords" content="Word Embeddings, word2vec, AllenNLP">
+
+<meta property="og:site_name" content="Real-World Natural Language Processing"/>
+<meta property="og:title" content="A Gentle Introduction to SkipGram (word2vec) Model — AllenNLP ver."/>
+<meta property="og:description" content="The SkipGram model (so called &#34;word2vec&#34;) is one of the most important concepts in modern NLP, yet many people simply use its implementation and/or pre-trained embeddings, and few people fully understand how the model is actually built. In this article, I&#39;ll cover: What the SkipGram model is How to …"/>
+<meta property="og:locale" content="en_US"/>
+<meta property="og:url" content="http://www.realworldnlpbook.com/blog/gentle-introduction-to-skipgram-word2vec-model-allennlp-ver.html"/>
+<meta property="og:type" content="article"/>
+<meta property="article:published_time" content="2019-02-02 00:00:00-05:00"/>
+<meta property="article:modified_time" content=""/>
+<meta property="article:author" content="http://www.realworldnlpbook.com/blog/author/masato-hagiwara.html">
+<meta property="article:section" content="Word Embeddings"/>
+<meta property="article:tag" content="Word Embeddings"/>
+<meta property="article:tag" content="word2vec"/>
+<meta property="article:tag" content="AllenNLP"/>
+<meta property="og:image" content="http://www.realworldnlpbook.com/blog/example.png">
+
+  <title>A Gentle Introduction to SkipGram (word2vec) Model — AllenNLP ver. &ndash; Real-World Natural Language Processing</title>
+
+</head>
+<body>
+  <aside>
+    <div>
+      <a href="http://www.realworldnlpbook.com/blog">
+        <img src="http://masatohagiwara.net/img/profile.jpg" alt="Real-World Natural Language Processing" title="Real-World Natural Language Processing">
+      </a>
+      <h1><a href="http://www.realworldnlpbook.com/blog">Real-World Natural Language Processing</a></h1>
+
+<p>NLP recipes and best practices <br/>from the Manning book "Real-World NLP"</p>
+      <nav>
+        <ul class="list">
+
+          <li><a href="http://www.realworldnlpbook.com/" target="_blank">Real-World NLP Book</a></li>
+          <li><a href="http://masatohagiwara.net/" target="_blank">Masato Hagiwara</a></li>
+          <li><a href="https://www.manning.com/" target="_blank">Manning Publications</a></li>
+        </ul>
+      </nav>
+
+      <ul class="social">
+        <li><a class="sc-envelope" href="mailto: hagisan@gmail.com" target="_blank"><i class="fa fa-envelope"></i></a></li>
+        <li><a class="sc-twitter" href="https://twitter.com/mhagiwara" target="_blank"><i class="fa fa-twitter"></i></a></li>
+        <li><a class="sc-github" href="https://github.com/mhagiwara/realworldnlp" target="_blank"><i class="fa fa-github"></i></a></li>
+      </ul>
+    </div>
+
+
+  </aside>
+  <main>
+
+
+<article class="single">
+  <header>
+      
+    <h1 id="gentle-introduction-to-skipgram-word2vec-model-allennlp-ver">A Gentle Introduction to SkipGram (word2vec) Model — AllenNLP ver.</h1>
+    <p>
+          Posted on Sat 02 February 2019 in <a href="http://www.realworldnlpbook.com/blog/category/word-embeddings.html">Word Embeddings</a>
+
+
+    </p>
+  </header>
+
+
+  <div>
+    <p>The SkipGram model (so called "word2vec") is one of the most important concepts in modern NLP, yet many people simply use <a href="https://code.google.com/archive/p/word2vec/">its implementation</a> and/or pre-trained embeddings, and few people fully understand how the model is actually built. In this article, I'll cover:</p>
+<ul>
+<li>What the SkipGram model is</li>
+<li>How to train the SkipGram (word2vec) model from scratch</li>
+<li>How to evaluate the word embeddings</li>
+</ul>
+<p>You can see <a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/embeddings/word2vec.py">the full script</a> that I wrote for this article. The script relies on <a href="https://allennlp.org/">AllenNLP</a>, which makes it well-structured and readable, but none of the explanations below rely on specifics of AllenNLP. </p>
+<h2>What are Word Embeddings</h2>
+<p>As I explained in <a href="http://www.realworldnlpbook.com/blog/improving-sentiment-analyzer-using-elmo.html">the previous post</a>, a word embedding is a continuous vector representation of a word. If you are not familiar with the mathematical concept, imagine assigning an array of floating point numbers to each word: </p>
+<ul>
+<li><code>vec("dog") = [0.8, 0.3, 0.1]</code></li>
+<li><code>vec("cat") = [0.7, 0.5, 0.1]</code></li>
+<li><code>vec("pizza") = [0.1, 0.2, 0.8]</code></li>
+</ul>
+<p>In this example, I just made up those three-dimensional vectors, but you can see the first element of each word represents some sort of "animal-ness." If you want to calculate some semantic similarity between words, you can do it by looking at the "angle" between two vectors (more technically, this is called a <em>cosine similarity</em>). If you want to train another NLP model on top of those representations, you can use them as the input to your machine learning model. </p>
+<p>Now, there's one important piece of information missing from the discussion so far. How do you come up with those float numbers? It would be virtually impossible to assign them by hand. There are hundreds of thousands of unique words in a typical large corpus, and the arrays should be at least around 100-dimensional long to be effective, which means there are more than tens of millions of numbers that you need to tweak.</p>
+<p>But more importantly, what should those numbers look like? How do you determine whether you should assign a 0.8 to the first element of the "dog" vector, or 0.7, or any other numbers? That's exactly what the SkipGram model is designed to do, which I'll explain below.</p>
+<h2>SkipGram Model</h2>
+<p>One possible way to do this without teaching the computer what "dog" means is to use its context. For example, what words tend to appear together with the word "dog" if you look at its appearances in a large text corpus? "Pet," "tail," "smell," "bark," "puppy," ... there can be countless options. How about "cat"? Maybe "pet," "tail," "fur," "meow," "kitten," and so on. Because "dog" and "cat" have a lot in common conceptually (they are both popular pet animals with a tail, etc. etc.), these two sets of context words also have large overlap. In other words, you can guess how close two words are to each other by looking at what other words appear in the same context. This is called <em>the distributional hypothesis</em> and has a long history in NLP.</p>
+<p>We are now one step closer. If two words have a lot of context words in common, we can give similar vectors to those two words. You can think of a word vector as a "compressed" representation of its context words. Then the question becomes: how can you "de-compress" a word vector to obtain their context words? How can you even represent a set of context words mathematically? Conceptually, we'd like to come up with a model that does something like this: </p>
+<div class="highlight"><pre><span></span>&quot;dog&quot; -&gt; (0.8, 0.3, 0.1) -&gt; (de-compressor) -&gt; {&quot;pet&quot;, &quot;tail&quot;, &quot;smell&quot;, &quot;bark&quot;, ...}  
+</pre></div>
+
+
+<p>One way to represent a set of words mathematically is to assign a score to each word in the vocabulary. Instead of representing context words as a set, we can think of it as an associative array from words to their "scores" that correspond to how related each word is to "dog":</p>
+<div class="highlight"><pre><span></span>{&quot;bark&quot;: 1.4, &quot;chocolate&quot;: 0.1, ..., &quot;pet&quot;: 1.2, ..., &quot;smell&quot;: 0.6, ...} 
+</pre></div>
+
+
+<p>The only remaining piece of the model is how to come up with those "scores."  If you sort this list by word IDs (which may be assigned alphabetically), the scores can be conveniently represented by an N-dimensional vector, where N is the size of the entire vocabulary (the number of unique context words we consider). </p>
+<div class="highlight"><pre><span></span>[1.4, 0.1, ..., 1.2, ..., 0.6, ...] 
+</pre></div>
+
+
+<p>All the "de-compressor" needs to do is expand the word embedding vector (which has three dimensions) to another vector of N dimensions.</p>
+<p>This may sound very familiar to some of you—yes, it's exactly what linear layers (aka fully-connected layers) do. <strong>Linear layers convert a vector of one size to another of different size in a linear fashion.</strong> Putting everything together, the architecture of the SkipGram model looks like the following figure:</p>
+<figure style="text-align: center">
+    <img src="images/skipgram.png"/>
+    <figcaption>Figure: SkipGram model</figcaption>
+</figure>
+
+<h2>Softmax — Converting Scores to a Probability Distribution</h2>
+<p>Hopefully I successfully convinced you that SkipGram is actually a lot simpler than most people think. Now, let's talk about how to "train" it and learn the word embeddings we want. The key here is to turn this into a classification task, where the network predicts what words appear in the context. The "context" here simply means a window of a fixed size (for example, 5+5 words on the both sides). This is actually a "fake" task because we are not interested in the prediction of the model per se, but rather in the by-product (word embeddings) produced by training the model.</p>
+<p>It is relatively easy to make a neural network solve a classification task. You need two things:</p>
+<ul>
+<li>Modify the network so that it produces a probability distribution</li>
+<li>Use cross entropy as the loss function</li>
+</ul>
+<p>You use something called <em>softmax</em> to do the first. Softmax is a function that turns a vector of K float numbers to a probability distribution, by first "squashing" the numbers so that they fit a range between 0.0-1.0, and then normalizing them so that the sum equals 1. Softmax does all this while preserving the relative ordering of the input float numbers, so large input numbers still have large probability mass in the output distribution. The following figure illustrates this conceptually:</p>
+<figure style="text-align: center">
+    <img src="images/softmax.png"/>
+    <figcaption>Figure: Converting a K-dimensional real vector to a probability distribution using Softmax</figcaption>
+</figure>
+
+<p>Cross entropy is a loss function used to measure the distance between two probability distributions. It returns zero if two distributions match exactly, and higher values if the two diverge. For classification tasks, we use cross entropy to compare:</p>
+<ol>
+<li>the predicted probability distribution produced by the neural network (output of softmax) and,</li>
+<li>the "target" probability distribution where the probability of the correct class is 1.0 and everything else is 0.0</li>
+</ol>
+<p>The predictions made by the SkipGram model get closer and closer to the actual context words, and word embeddings are learned at the same time. </p>
+<h2>Negative Sampling — Faking the Fake Task</h2>
+<p>Theoretically, you can now build your own SkipGram model and train word embeddings. In practice, however, there is one issue in doing so—speed. Remember the softmax operation explained above first compresses scores to a range (0 to 1) and normalizes everything. This doesn't seem obvious, but if there are millions of words in the vocabulary, softmax needs to go over the list of millions of words <em>twice</em>.</p>
+<p>Then, after computing the cross entropy loss, depending on how far the desired outcome (if the word is in the context or not) and the predicted probability for each word are, the network needs to adjust word embeddings for <em>every single word</em> in the millions of words, even for the ones that have nothing to do with the target word and the context words. You need to run this training iteration for every single word in a large corpus. You can imagine how slow this model could be even without actually running it!</p>
+<p>The key here is that the network tries to update word embeddings even for millions of other words that have nothing to do with the context. For example, even when you are thinking about the relationship between "dog" and "bark," the network needs to worry about updating the embeddings for, say, "pizza" and "electronics." This happens for every single word in a corpus. </p>
+<p>How could we make this much more efficient? The key is to consider a much smaller subset of words at a time, instead of the entire vocabulary. Specifically, in addition to the words that did appear in the context (e.g., "bark", "tail", etc.), consider a small set of randomly sampled words (e.g., "pizza", "electronics", "idea", etc.) that <em>did not</em> appear in the context. This approach is called <em>negative sampling</em>.</p>
+<p>Then, <strong>the network's objective becomes a binary (not multi-class) classification task</strong> where it distinguishes the "positive" context words from the "negative" (or, fake) context words. This is not exactly the same task as the original one (multi-class classification), but a very close one and a more efficient way to train word embeddings. The following figure illustrates this new approach.</p>
+<figure style="text-align: center">
+    <img src="images/negative-sampling.png"/>
+    <figcaption>Figure: Negative sampling</figcaption>
+</figure>
+
+<p>Notice that now you can ignore all the other words that are not in either the positive or the negative word sets. Updates only happen on the word embeddings for the words in those sets. The loss function becomes that of a binary classification task (sigmoid loss), but I'm not going into the details of this. See <a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/embeddings/word2vec.py#L120">the full code</a> for the details. In the code, negative samples are randomly generated using Numpy's <code>choice</code> function as follows:</p>
+<div class="highlight"><pre><span></span><span class="c1"># Generate negative examples</span>
+<span class="n">negative_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">vocab</span><span class="o">.</span><span class="n">get_vocab_size</span><span class="p">(</span><span class="s1">&#39;token_in&#39;</span><span class="p">),</span>
+                                <span class="n">size</span><span class="o">=</span><span class="n">batch_size</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">neg_samples</span><span class="p">,</span>
+                                <span class="n">p</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">neg_sample_probs</span><span class="p">)</span>
+</pre></div>
+
+
+<p><code>self.neg_sample_probs</code> contains the pre-computed probability distribution over all the words in the vocabulary. See <a href="https://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf">the original paper</a> for the details of this sampling procedure.</p>
+<h2>Subsampling Frequent Words</h2>
+<p>There's one final bit of detail that you need to know before you can actually train the Skipgram model—subsampling of frequent words. </p>
+<p>In a typical natural language corpus, there are a small number of words that appear frequently. Often too frequently—in fact, the most common English word "the" appears 5% of time in a typical English corpus, which means, on average, one out of every 20 words in English text is "the"!</p>
+<p>Why would this be a problem? First, frequent words are not as useful as other, less frequent words. For example, knowing "bark" appears as a context word conveys a lot more information about "dog" than knowing "the" also appears as its context word, because "the" appears in the context of almost every word in English. But more importantly, they are huge waste of computation, because "the" as a context word won't affect word embeddings very much. You can probably skip most occurrences of "the" without affecting the quality of word embeddings.</p>
+<p>Subsampling of frequent words is inspired by this insight. The idea is that you skip occurrences of a word with a higher probability if the word occurs more frequently in the corpus. There's a specific formula used to determine this probability from the word's frequency (see <a href="https://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf">the paper</a> for the details), but here it is probably enough to know that the higher the word's frequency in the corpus, the more likely the word is skipped. </p>
+<p>I implemented subsampling in AllenNLP by writing a sub-method in <code>DatasetReader</code> that specifically does this sampling. The method below, given a list of tokens in a corpus,   returns another list with rejected words replaced with <code>None</code>s (<code>self.reject_probs</code> contains a pre-computed dict of probabilities). You can simply ignore all the <code>None</code>s When you generate instances from this list.</p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">_subsample_tokens</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tokens</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Given a list of tokens, runs sub-sampling.</span>
+
+<span class="sd">    Returns a new list of tokens where rejected tokens are replaced by Nones.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">new_tokens</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">tokens</span><span class="p">:</span>
+        <span class="n">reject_prob</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reject_probs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="mf">0.</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;=</span> <span class="n">reject_prob</span><span class="p">:</span>
+            <span class="n">new_tokens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">None</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">new_tokens</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">new_tokens</span>
+</pre></div>
+
+
+<p>One caveat is doing this assumes that you already know the frequencies for all words that appear in a corpus. I solved this by <a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/embeddings/word2vec.py#L208">reading the corpus twice</a>—first without <code>Vocabulary</code> then with. There may be smarter solutions for this, for example, lazily sampling AllenNLP's <code>Instance</code>s instead of tokens, but this is good enough for now.</p>
+<h2>Putting Everything Together</h2>
+<p>I used the <a href="http://mattmahoney.net/dc/textdata">text8 dataset</a> (a sample of cleaned Wikipedia text) as the train set. Despite all these tricks for speeding up the training, it was still slow and the model took hours to train even on a GPU, so I had to truncate the dataset by only using the first 5M tokens. Here's <a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/embeddings/word2vec.py">the full script</a> I used. The batch size, the embedding size, and the number of epochs are 256, 256, and 5, respectively.</p>
+<p>After the model is trained, you can obtain a list of similar words for a given word by computing the cosine similarity between them:</p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_synonyms</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">embedding</span><span class="p">,</span> <span class="n">vocab</span><span class="p">:</span> <span class="n">Vocabulary</span><span class="p">,</span> <span class="n">num_synonyms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Given a token, return a list of top N most similar words to the token.&quot;&quot;&quot;</span>
+    <span class="n">token_id</span> <span class="o">=</span> <span class="n">vocab</span><span class="o">.</span><span class="n">get_token_index</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="s1">&#39;token_in&#39;</span><span class="p">)</span>
+    <span class="n">token_vec</span> <span class="o">=</span> <span class="n">embedding</span><span class="o">.</span><span class="n">weight</span><span class="p">[</span><span class="n">token_id</span><span class="p">]</span>
+    <span class="n">cosine</span> <span class="o">=</span> <span class="n">CosineSimilarity</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">sims</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">token</span> <span class="ow">in</span> <span class="n">vocab</span><span class="o">.</span><span class="n">get_index_to_token_vocabulary</span><span class="p">(</span><span class="s1">&#39;token_in&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">sim</span> <span class="o">=</span> <span class="n">cosine</span><span class="p">(</span><span class="n">token_vec</span><span class="p">,</span> <span class="n">embedding</span><span class="o">.</span><span class="n">weight</span><span class="p">[</span><span class="n">index</span><span class="p">])</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="n">sims</span><span class="p">[</span><span class="n">token</span><span class="p">]</span> <span class="o">=</span> <span class="n">sim</span>
+
+    <span class="k">return</span> <span class="n">sims</span><span class="o">.</span><span class="n">most_common</span><span class="p">(</span><span class="n">num_synonyms</span><span class="p">)</span>
+</pre></div>
+
+
+<p>If you run this method for the word "december", you get its list of similar words as follows:</p>
+<table>
+<thead>
+<tr>
+<th>word</th>
+<th>similarity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>december</td>
+<td>1.00</td>
+</tr>
+<tr>
+<td>january</td>
+<td>0.58</td>
+</tr>
+<tr>
+<td>november</td>
+<td>0.57</td>
+</tr>
+<tr>
+<td>july</td>
+<td>0.57</td>
+</tr>
+<tr>
+<td>october</td>
+<td>0.56</td>
+</tr>
+<tr>
+<td>february</td>
+<td>0.56</td>
+</tr>
+<tr>
+<td>april</td>
+<td>0.55</td>
+</tr>
+<tr>
+<td>september</td>
+<td>0.52</td>
+</tr>
+<tr>
+<td>march</td>
+<td>0.51</td>
+</tr>
+<tr>
+<td>august</td>
+<td>0.50</td>
+</tr>
+</tbody>
+</table>
+<p>The first word is the input word itself—the cosine similarity between two identical vectors is always 1.0 by definition, so this is just a sanity check. Closed classes of words that share regular structures such as numbers and months are among the easiest for word embedding models to capture, so you can use words like this to check if your embeddings are working as intended.</p>
+<p>If you run this for "snow", you'd get:</p>
+<table>
+<thead>
+<tr>
+<th>word</th>
+<th>similarity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>snow</td>
+<td>1.00</td>
+</tr>
+<tr>
+<td>albedos</td>
+<td>0.49</td>
+</tr>
+<tr>
+<td>nozomi</td>
+<td>0.43</td>
+</tr>
+<tr>
+<td>snowstorms</td>
+<td>0.42</td>
+</tr>
+<tr>
+<td>winter</td>
+<td>0.40</td>
+</tr>
+<tr>
+<td>hailstorms</td>
+<td>0.40</td>
+</tr>
+<tr>
+<td>sunny</td>
+<td>0.39</td>
+</tr>
+<tr>
+<td>petrel</td>
+<td>0.39</td>
+</tr>
+<tr>
+<td>precipitation</td>
+<td>0.38</td>
+</tr>
+<tr>
+<td>weather</td>
+<td>0.39</td>
+</tr>
+</tbody>
+</table>
+<p>The result is more mixed than the previous one, but all the word have at least something to do with snow. </p>
+<h2>Evaluating Word Embeddings</h2>
+<p>After trying a couple more words, you may be confident that your SkipGram model is producing word embeddings that capture at least some semantic information. But how do you objectively measure the quality of word embeddings? This is the final step in this article.</p>
+<p>The way we'll evaluate the quality of word embeddings is to see how closely the similarities computed by embeddings (like the ones above) match the actual similarities  assigned by human judgements. I used <a href="https://fh295.github.io/simlex.html">SimLex-999</a>,  a dataset containing 999 word pairs and their similarities that are based on human annotations. Here's an excerpt from the dataset. The first two columns are words, and third and fourth columns are part of speech and similarity. </p>
+<div class="highlight"><pre><span></span>night   day     N       1.88
+south   north   N       2.2
+plane   airport N       3.65
+uncle   aunt    N       5.5
+horse   mare    N       8.33
+bottom  top     N       0.7
+friend  buddy   N       8.78
+student pupil   N       9.35
+world   globe   N       6.67
+leg     arm     N       2.88
+</pre></div>
+
+
+<p>Word pairs such as "night" - "day" are given a low similarity because they are antonyms (words with opposite meanings). Other pairs, such as "leg" and "arm", are related, but also assigned low similarities. Only synonymous pairs ("student" - "pupil") are given higher similarities.</p>
+<p>The structure of this dataset is very convenient for us. As shown above, we already have word pairs and their estimated similarity values. All you need to do is to compare two sets of  similarities and calculate how they are related. We use a correlation coefficient (more specifically, <a href="https://en.wikipedia.org/wiki/Spearman%27s_rank_correlation_coefficient">Spearman's rank correlation coefficient</a>) for this.</p>
+<p>When I ran the training, I got a correlation coefficient of r = 0.202. For reference, according to <a href="https://aclweb.org/aclwiki/SimLex-999_(State_of_the_art)">the ACL Wiki page</a>, the state of the art for this dataset is around 0.5. I expect that our results will be higher if we use a larger dataset and a larger value for the embedding size. </p>
+  </div>
+  <div class="tag-cloud">
+    <p>
+      <a href="http://www.realworldnlpbook.com/blog/tag/word-embeddings.html">Word Embeddings</a>
+      <a href="http://www.realworldnlpbook.com/blog/tag/word2vec.html">word2vec</a>
+      <a href="http://www.realworldnlpbook.com/blog/tag/allennlp.html">AllenNLP</a>
+    </p>
+  </div>
+
+
+
+
+
+</article>
+
+    <footer>
+<p>&copy;  2018</p>
+<p>    Powered by <a href="http://getpelican.com" target="_blank">Pelican</a> - <a href="https://github.com/alexandrevicenzi/flex" target="_blank">Flex</a> theme by <a href="http://alexandrevicenzi.com" target="_blank">Alexandre Vicenzi</a>
+</p>    </footer>
+  </main>
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context" : "http://schema.org",
+  "@type" : "Blog",
+  "name": " Real-World Natural Language Processing ",
+  "url" : "http://www.realworldnlpbook.com/blog",
+  "image": "http://masatohagiwara.net/img/profile.jpg",
+  "description": ""
+}
+</script>
+
+</body>
+</html>

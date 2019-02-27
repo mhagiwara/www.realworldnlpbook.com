@@ -1,5 +1,252 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>Real-World Natural Language Processing</title><link href="http://www.realworldnlpbook.com/blog/" rel="alternate"></link><link href="http://www.realworldnlpbook.com/blog/feeds/all.atom.xml" rel="self"></link><id>http://www.realworldnlpbook.com/blog/</id><updated>2019-01-09T00:00:00-05:00</updated><entry><title>How to Convert an AllenNLP model and Deploy on Caffe2 and TensorFlow</title><link href="http://www.realworldnlpbook.com/blog/how-to-convert-an-allennlp-model-and-deploy-on-caffe2-and-tensorflow.html" rel="alternate"></link><published>2019-01-09T00:00:00-05:00</published><updated>2019-01-09T00:00:00-05:00</updated><author><name>Masato Hagiwara</name></author><id>tag:www.realworldnlpbook.com,2019-01-09:/blog/how-to-convert-an-allennlp-model-and-deploy-on-caffe2-and-tensorflow.html</id><summary type="html">&lt;p&gt;In the &lt;a href="http://www.realworldnlpbook.com/blog/training-sentiment-analyzer-using-allennlp.html"&gt;last&lt;/a&gt; &lt;a href="http://www.realworldnlpbook.com/blog/improving-sentiment-analyzer-using-elmo.html"&gt;three&lt;/a&gt; &lt;a href="http://www.realworldnlpbook.com/blog/building-seq2seq-machine-translation-models-using-allennlp.html"&gt;posts&lt;/a&gt;, I talked mainly about how to train NLP models using &lt;a href="https://allennlp.org/"&gt;AllenNLP&lt;/a&gt;. AllenNLP is a great NLP framework especially for quickly prototyping research models. However, it is not optimized for scalability or portability, and it comes with a ton of dependencies that are handy when you …&lt;/p&gt;</summary><content type="html">&lt;p&gt;In the &lt;a href="http://www.realworldnlpbook.com/blog/training-sentiment-analyzer-using-allennlp.html"&gt;last&lt;/a&gt; &lt;a href="http://www.realworldnlpbook.com/blog/improving-sentiment-analyzer-using-elmo.html"&gt;three&lt;/a&gt; &lt;a href="http://www.realworldnlpbook.com/blog/building-seq2seq-machine-translation-models-using-allennlp.html"&gt;posts&lt;/a&gt;, I talked mainly about how to train NLP models using &lt;a href="https://allennlp.org/"&gt;AllenNLP&lt;/a&gt;. AllenNLP is a great NLP framework especially for quickly prototyping research models. However, it is not optimized for scalability or portability, and it comes with a ton of dependencies that are handy when you are doing research but you may not want in your production environment.&lt;/p&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Real-World Natural Language Processing</title><link href="http://www.realworldnlpbook.com/blog/" rel="alternate"></link><link href="http://www.realworldnlpbook.com/blog/feeds/all.atom.xml" rel="self"></link><id>http://www.realworldnlpbook.com/blog/</id><updated>2019-02-02T00:00:00-05:00</updated><entry><title>A Gentle Introduction to SkipGram (word2vec) Model — AllenNLP ver.</title><link href="http://www.realworldnlpbook.com/blog/gentle-introduction-to-skipgram-word2vec-model-allennlp-ver.html" rel="alternate"></link><published>2019-02-02T00:00:00-05:00</published><updated>2019-02-02T00:00:00-05:00</updated><author><name>Masato Hagiwara</name></author><id>tag:www.realworldnlpbook.com,2019-02-02:/blog/gentle-introduction-to-skipgram-word2vec-model-allennlp-ver.html</id><summary type="html">&lt;p&gt;The SkipGram model (so called "word2vec") is one of the most important concepts in modern NLP, yet many people simply use &lt;a href="https://code.google.com/archive/p/word2vec/"&gt;its implementation&lt;/a&gt; and/or pre-trained embeddings, and few people fully understand how the model is actually built. In this article, I'll cover:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;What the SkipGram model is&lt;/li&gt;
+&lt;li&gt;How to …&lt;/li&gt;&lt;/ul&gt;</summary><content type="html">&lt;p&gt;The SkipGram model (so called "word2vec") is one of the most important concepts in modern NLP, yet many people simply use &lt;a href="https://code.google.com/archive/p/word2vec/"&gt;its implementation&lt;/a&gt; and/or pre-trained embeddings, and few people fully understand how the model is actually built. In this article, I'll cover:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;What the SkipGram model is&lt;/li&gt;
+&lt;li&gt;How to train the SkipGram (word2vec) model from scratch&lt;/li&gt;
+&lt;li&gt;How to evaluate the word embeddings&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;You can see &lt;a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/embeddings/word2vec.py"&gt;the full script&lt;/a&gt; that I wrote for this article. The script relies on &lt;a href="https://allennlp.org/"&gt;AllenNLP&lt;/a&gt;, which makes it well-structured and readable, but none of the explanations below rely on specifics of AllenNLP. &lt;/p&gt;
+&lt;h2&gt;What are Word Embeddings&lt;/h2&gt;
+&lt;p&gt;As I explained in &lt;a href="http://www.realworldnlpbook.com/blog/improving-sentiment-analyzer-using-elmo.html"&gt;the previous post&lt;/a&gt;, a word embedding is a continuous vector representation of a word. If you are not familiar with the mathematical concept, imagine assigning an array of floating point numbers to each word: &lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;vec("dog") = [0.8, 0.3, 0.1]&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;vec("cat") = [0.7, 0.5, 0.1]&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;vec("pizza") = [0.1, 0.2, 0.8]&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;In this example, I just made up those three-dimensional vectors, but you can see the first element of each word represents some sort of "animal-ness." If you want to calculate some semantic similarity between words, you can do it by looking at the "angle" between two vectors (more technically, this is called a &lt;em&gt;cosine similarity&lt;/em&gt;). If you want to train another NLP model on top of those representations, you can use them as the input to your machine learning model. &lt;/p&gt;
+&lt;p&gt;Now, there's one important piece of information missing from the discussion so far. How do you come up with those float numbers? It would be virtually impossible to assign them by hand. There are hundreds of thousands of unique words in a typical large corpus, and the arrays should be at least around 100-dimensional long to be effective, which means there are more than tens of millions of numbers that you need to tweak.&lt;/p&gt;
+&lt;p&gt;But more importantly, what should those numbers look like? How do you determine whether you should assign a 0.8 to the first element of the "dog" vector, or 0.7, or any other numbers? That's exactly what the SkipGram model is designed to do, which I'll explain below.&lt;/p&gt;
+&lt;h2&gt;SkipGram Model&lt;/h2&gt;
+&lt;p&gt;One possible way to do this without teaching the computer what "dog" means is to use its context. For example, what words tend to appear together with the word "dog" if you look at its appearances in a large text corpus? "Pet," "tail," "smell," "bark," "puppy," ... there can be countless options. How about "cat"? Maybe "pet," "tail," "fur," "meow," "kitten," and so on. Because "dog" and "cat" have a lot in common conceptually (they are both popular pet animals with a tail, etc. etc.), these two sets of context words also have large overlap. In other words, you can guess how close two words are to each other by looking at what other words appear in the same context. This is called &lt;em&gt;the distributional hypothesis&lt;/em&gt; and has a long history in NLP.&lt;/p&gt;
+&lt;p&gt;We are now one step closer. If two words have a lot of context words in common, we can give similar vectors to those two words. You can think of a word vector as a "compressed" representation of its context words. Then the question becomes: how can you "de-compress" a word vector to obtain their context words? How can you even represent a set of context words mathematically? Conceptually, we'd like to come up with a model that does something like this: &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&amp;quot;dog&amp;quot; -&amp;gt; (0.8, 0.3, 0.1) -&amp;gt; (de-compressor) -&amp;gt; {&amp;quot;pet&amp;quot;, &amp;quot;tail&amp;quot;, &amp;quot;smell&amp;quot;, &amp;quot;bark&amp;quot;, ...}  
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;One way to represent a set of words mathematically is to assign a score to each word in the vocabulary. Instead of representing context words as a set, we can think of it as an associative array from words to their "scores" that correspond to how related each word is to "dog":&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;{&amp;quot;bark&amp;quot;: 1.4, &amp;quot;chocolate&amp;quot;: 0.1, ..., &amp;quot;pet&amp;quot;: 1.2, ..., &amp;quot;smell&amp;quot;: 0.6, ...} 
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The only remaining piece of the model is how to come up with those "scores."  If you sort this list by word IDs (which may be assigned alphabetically), the scores can be conveniently represented by an N-dimensional vector, where N is the size of the entire vocabulary (the number of unique context words we consider). &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;[1.4, 0.1, ..., 1.2, ..., 0.6, ...] 
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;All the "de-compressor" needs to do is expand the word embedding vector (which has three dimensions) to another vector of N dimensions.&lt;/p&gt;
+&lt;p&gt;This may sound very familiar to some of you—yes, it's exactly what linear layers (aka fully-connected layers) do. &lt;strong&gt;Linear layers convert a vector of one size to another of different size in a linear fashion.&lt;/strong&gt; Putting everything together, the architecture of the SkipGram model looks like the following figure:&lt;/p&gt;
+&lt;figure style="text-align: center"&gt;
+    &lt;img src="images/skipgram.png"/&gt;
+    &lt;figcaption&gt;Figure: SkipGram model&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&lt;h2&gt;Softmax — Converting Scores to a Probability Distribution&lt;/h2&gt;
+&lt;p&gt;Hopefully I successfully convinced you that SkipGram is actually a lot simpler than most people think. Now, let's talk about how to "train" it and learn the word embeddings we want. The key here is to turn this into a classification task, where the network predicts what words appear in the context. The "context" here simply means a window of a fixed size (for example, 5+5 words on the both sides). This is actually a "fake" task because we are not interested in the prediction of the model per se, but rather in the by-product (word embeddings) produced by training the model.&lt;/p&gt;
+&lt;p&gt;It is relatively easy to make a neural network solve a classification task. You need two things:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Modify the network so that it produces a probability distribution&lt;/li&gt;
+&lt;li&gt;Use cross entropy as the loss function&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;You use something called &lt;em&gt;softmax&lt;/em&gt; to do the first. Softmax is a function that turns a vector of K float numbers to a probability distribution, by first "squashing" the numbers so that they fit a range between 0.0-1.0, and then normalizing them so that the sum equals 1. Softmax does all this while preserving the relative ordering of the input float numbers, so large input numbers still have large probability mass in the output distribution. The following figure illustrates this conceptually:&lt;/p&gt;
+&lt;figure style="text-align: center"&gt;
+    &lt;img src="images/softmax.png"/&gt;
+    &lt;figcaption&gt;Figure: Converting a K-dimensional real vector to a probability distribution using Softmax&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&lt;p&gt;Cross entropy is a loss function used to measure the distance between two probability distributions. It returns zero if two distributions match exactly, and higher values if the two diverge. For classification tasks, we use cross entropy to compare:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;the predicted probability distribution produced by the neural network (output of softmax) and,&lt;/li&gt;
+&lt;li&gt;the "target" probability distribution where the probability of the correct class is 1.0 and everything else is 0.0&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;The predictions made by the SkipGram model get closer and closer to the actual context words, and word embeddings are learned at the same time. &lt;/p&gt;
+&lt;h2&gt;Negative Sampling — Faking the Fake Task&lt;/h2&gt;
+&lt;p&gt;Theoretically, you can now build your own SkipGram model and train word embeddings. In practice, however, there is one issue in doing so—speed. Remember the softmax operation explained above first compresses scores to a range (0 to 1) and normalizes everything. This doesn't seem obvious, but if there are millions of words in the vocabulary, softmax needs to go over the list of millions of words &lt;em&gt;twice&lt;/em&gt;.&lt;/p&gt;
+&lt;p&gt;Then, after computing the cross entropy loss, depending on how far the desired outcome (if the word is in the context or not) and the predicted probability for each word are, the network needs to adjust word embeddings for &lt;em&gt;every single word&lt;/em&gt; in the millions of words, even for the ones that have nothing to do with the target word and the context words. You need to run this training iteration for every single word in a large corpus. You can imagine how slow this model could be even without actually running it!&lt;/p&gt;
+&lt;p&gt;The key here is that the network tries to update word embeddings even for millions of other words that have nothing to do with the context. For example, even when you are thinking about the relationship between "dog" and "bark," the network needs to worry about updating the embeddings for, say, "pizza" and "electronics." This happens for every single word in a corpus. &lt;/p&gt;
+&lt;p&gt;How could we make this much more efficient? The key is to consider a much smaller subset of words at a time, instead of the entire vocabulary. Specifically, in addition to the words that did appear in the context (e.g., "bark", "tail", etc.), consider a small set of randomly sampled words (e.g., "pizza", "electronics", "idea", etc.) that &lt;em&gt;did not&lt;/em&gt; appear in the context. This approach is called &lt;em&gt;negative sampling&lt;/em&gt;.&lt;/p&gt;
+&lt;p&gt;Then, &lt;strong&gt;the network's objective becomes a binary (not multi-class) classification task&lt;/strong&gt; where it distinguishes the "positive" context words from the "negative" (or, fake) context words. This is not exactly the same task as the original one (multi-class classification), but a very close one and a more efficient way to train word embeddings. The following figure illustrates this new approach.&lt;/p&gt;
+&lt;figure style="text-align: center"&gt;
+    &lt;img src="images/negative-sampling.png"/&gt;
+    &lt;figcaption&gt;Figure: Negative sampling&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&lt;p&gt;Notice that now you can ignore all the other words that are not in either the positive or the negative word sets. Updates only happen on the word embeddings for the words in those sets. The loss function becomes that of a binary classification task (sigmoid loss), but I'm not going into the details of this. See &lt;a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/embeddings/word2vec.py#L120"&gt;the full code&lt;/a&gt; for the details. In the code, negative samples are randomly generated using Numpy's &lt;code&gt;choice&lt;/code&gt; function as follows:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# Generate negative examples&lt;/span&gt;
+&lt;span class="n"&gt;negative_out&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;random&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;choice&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;a&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_vocab_size&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;token_in&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+                                &lt;span class="n"&gt;size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;batch_size&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;neg_samples&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                                &lt;span class="n"&gt;p&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;neg_sample_probs&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;code&gt;self.neg_sample_probs&lt;/code&gt; contains the pre-computed probability distribution over all the words in the vocabulary. See &lt;a href="https://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf"&gt;the original paper&lt;/a&gt; for the details of this sampling procedure.&lt;/p&gt;
+&lt;h2&gt;Subsampling Frequent Words&lt;/h2&gt;
+&lt;p&gt;There's one final bit of detail that you need to know before you can actually train the Skipgram model—subsampling of frequent words. &lt;/p&gt;
+&lt;p&gt;In a typical natural language corpus, there are a small number of words that appear frequently. Often too frequently—in fact, the most common English word "the" appears 5% of time in a typical English corpus, which means, on average, one out of every 20 words in English text is "the"!&lt;/p&gt;
+&lt;p&gt;Why would this be a problem? First, frequent words are not as useful as other, less frequent words. For example, knowing "bark" appears as a context word conveys a lot more information about "dog" than knowing "the" also appears as its context word, because "the" appears in the context of almost every word in English. But more importantly, they are huge waste of computation, because "the" as a context word won't affect word embeddings very much. You can probably skip most occurrences of "the" without affecting the quality of word embeddings.&lt;/p&gt;
+&lt;p&gt;Subsampling of frequent words is inspired by this insight. The idea is that you skip occurrences of a word with a higher probability if the word occurs more frequently in the corpus. There's a specific formula used to determine this probability from the word's frequency (see &lt;a href="https://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf"&gt;the paper&lt;/a&gt; for the details), but here it is probably enough to know that the higher the word's frequency in the corpus, the more likely the word is skipped. &lt;/p&gt;
+&lt;p&gt;I implemented subsampling in AllenNLP by writing a sub-method in &lt;code&gt;DatasetReader&lt;/code&gt; that specifically does this sampling. The method below, given a list of tokens in a corpus,   returns another list with rejected words replaced with &lt;code&gt;None&lt;/code&gt;s (&lt;code&gt;self.reject_probs&lt;/code&gt; contains a pre-computed dict of probabilities). You can simply ignore all the &lt;code&gt;None&lt;/code&gt;s When you generate instances from this list.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;_subsample_tokens&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;tokens&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="sd"&gt;&amp;quot;&amp;quot;&amp;quot;Given a list of tokens, runs sub-sampling.&lt;/span&gt;
+
+&lt;span class="sd"&gt;    Returns a new list of tokens where rejected tokens are replaced by Nones.&lt;/span&gt;
+&lt;span class="sd"&gt;    &amp;quot;&amp;quot;&amp;quot;&lt;/span&gt;
+    &lt;span class="n"&gt;new_tokens&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[]&lt;/span&gt;
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;token&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;tokens&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="n"&gt;reject_prob&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;reject_probs&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;token&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mf"&gt;0.&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;random&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;random&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;=&lt;/span&gt; &lt;span class="n"&gt;reject_prob&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+            &lt;span class="n"&gt;new_tokens&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;append&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="k"&gt;else&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+            &lt;span class="n"&gt;new_tokens&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;append&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;token&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;new_tokens&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;One caveat is doing this assumes that you already know the frequencies for all words that appear in a corpus. I solved this by &lt;a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/embeddings/word2vec.py#L208"&gt;reading the corpus twice&lt;/a&gt;—first without &lt;code&gt;Vocabulary&lt;/code&gt; then with. There may be smarter solutions for this, for example, lazily sampling AllenNLP's &lt;code&gt;Instance&lt;/code&gt;s instead of tokens, but this is good enough for now.&lt;/p&gt;
+&lt;h2&gt;Putting Everything Together&lt;/h2&gt;
+&lt;p&gt;I used the &lt;a href="http://mattmahoney.net/dc/textdata"&gt;text8 dataset&lt;/a&gt; (a sample of cleaned Wikipedia text) as the train set. Despite all these tricks for speeding up the training, it was still slow and the model took hours to train even on a GPU, so I had to truncate the dataset by only using the first 5M tokens. Here's &lt;a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/embeddings/word2vec.py"&gt;the full script&lt;/a&gt; I used. The batch size, the embedding size, and the number of epochs are 256, 256, and 5, respectively.&lt;/p&gt;
+&lt;p&gt;After the model is trained, you can obtain a list of similar words for a given word by computing the cosine similarity between them:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;get_synonyms&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;token&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;embedding&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;Vocabulary&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;num_synonyms&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="nb"&gt;int&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;10&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="sd"&gt;&amp;quot;&amp;quot;&amp;quot;Given a token, return a list of top N most similar words to the token.&amp;quot;&amp;quot;&amp;quot;&lt;/span&gt;
+    &lt;span class="n"&gt;token_id&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_token_index&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;token&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;token_in&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;token_vec&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;embedding&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;weight&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;token_id&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+    &lt;span class="n"&gt;cosine&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;CosineSimilarity&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;dim&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;sims&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Counter&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;index&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;token&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_index_to_token_vocabulary&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;token_in&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;items&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+        &lt;span class="n"&gt;sim&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;cosine&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;token_vec&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;embedding&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;weight&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;index&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;item&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+        &lt;span class="n"&gt;sims&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;token&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;sim&lt;/span&gt;
+
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;sims&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;most_common&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;num_synonyms&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;If you run this method for the word "december", you get its list of similar words as follows:&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;word&lt;/th&gt;
+&lt;th&gt;similarity&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;december&lt;/td&gt;
+&lt;td&gt;1.00&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;january&lt;/td&gt;
+&lt;td&gt;0.58&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;november&lt;/td&gt;
+&lt;td&gt;0.57&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;july&lt;/td&gt;
+&lt;td&gt;0.57&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;october&lt;/td&gt;
+&lt;td&gt;0.56&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;february&lt;/td&gt;
+&lt;td&gt;0.56&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;april&lt;/td&gt;
+&lt;td&gt;0.55&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;september&lt;/td&gt;
+&lt;td&gt;0.52&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;march&lt;/td&gt;
+&lt;td&gt;0.51&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;august&lt;/td&gt;
+&lt;td&gt;0.50&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;The first word is the input word itself—the cosine similarity between two identical vectors is always 1.0 by definition, so this is just a sanity check. Closed classes of words that share regular structures such as numbers and months are among the easiest for word embedding models to capture, so you can use words like this to check if your embeddings are working as intended.&lt;/p&gt;
+&lt;p&gt;If you run this for "snow", you'd get:&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;word&lt;/th&gt;
+&lt;th&gt;similarity&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;snow&lt;/td&gt;
+&lt;td&gt;1.00&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;albedos&lt;/td&gt;
+&lt;td&gt;0.49&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;nozomi&lt;/td&gt;
+&lt;td&gt;0.43&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;snowstorms&lt;/td&gt;
+&lt;td&gt;0.42&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;winter&lt;/td&gt;
+&lt;td&gt;0.40&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;hailstorms&lt;/td&gt;
+&lt;td&gt;0.40&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;sunny&lt;/td&gt;
+&lt;td&gt;0.39&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;petrel&lt;/td&gt;
+&lt;td&gt;0.39&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;precipitation&lt;/td&gt;
+&lt;td&gt;0.38&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;weather&lt;/td&gt;
+&lt;td&gt;0.39&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;The result is more mixed than the previous one, but all the word have at least something to do with snow. &lt;/p&gt;
+&lt;h2&gt;Evaluating Word Embeddings&lt;/h2&gt;
+&lt;p&gt;After trying a couple more words, you may be confident that your SkipGram model is producing word embeddings that capture at least some semantic information. But how do you objectively measure the quality of word embeddings? This is the final step in this article.&lt;/p&gt;
+&lt;p&gt;The way we'll evaluate the quality of word embeddings is to see how closely the similarities computed by embeddings (like the ones above) match the actual similarities  assigned by human judgements. I used &lt;a href="https://fh295.github.io/simlex.html"&gt;SimLex-999&lt;/a&gt;,  a dataset containing 999 word pairs and their similarities that are based on human annotations. Here's an excerpt from the dataset. The first two columns are words, and third and fourth columns are part of speech and similarity. &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;night   day     N       1.88
+south   north   N       2.2
+plane   airport N       3.65
+uncle   aunt    N       5.5
+horse   mare    N       8.33
+bottom  top     N       0.7
+friend  buddy   N       8.78
+student pupil   N       9.35
+world   globe   N       6.67
+leg     arm     N       2.88
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Word pairs such as "night" - "day" are given a low similarity because they are antonyms (words with opposite meanings). Other pairs, such as "leg" and "arm", are related, but also assigned low similarities. Only synonymous pairs ("student" - "pupil") are given higher similarities.&lt;/p&gt;
+&lt;p&gt;The structure of this dataset is very convenient for us. As shown above, we already have word pairs and their estimated similarity values. All you need to do is to compare two sets of  similarities and calculate how they are related. We use a correlation coefficient (more specifically, &lt;a href="https://en.wikipedia.org/wiki/Spearman%27s_rank_correlation_coefficient"&gt;Spearman's rank correlation coefficient&lt;/a&gt;) for this.&lt;/p&gt;
+&lt;p&gt;When I ran the training, I got a correlation coefficient of r = 0.202. For reference, according to &lt;a href="https://aclweb.org/aclwiki/SimLex-999_(State_of_the_art)"&gt;the ACL Wiki page&lt;/a&gt;, the state of the art for this dataset is around 0.5. I expect that our results will be higher if we use a larger dataset and a larger value for the embedding size. &lt;/p&gt;</content><category term="Word Embeddings"></category><category term="word2vec"></category><category term="AllenNLP"></category></entry><entry><title>How to Convert an AllenNLP model and Deploy on Caffe2 and TensorFlow</title><link href="http://www.realworldnlpbook.com/blog/how-to-convert-an-allennlp-model-and-deploy-on-caffe2-and-tensorflow.html" rel="alternate"></link><published>2019-01-09T00:00:00-05:00</published><updated>2019-01-09T00:00:00-05:00</updated><author><name>Masato Hagiwara</name></author><id>tag:www.realworldnlpbook.com,2019-01-09:/blog/how-to-convert-an-allennlp-model-and-deploy-on-caffe2-and-tensorflow.html</id><summary type="html">&lt;p&gt;In the &lt;a href="http://www.realworldnlpbook.com/blog/training-sentiment-analyzer-using-allennlp.html"&gt;last&lt;/a&gt; &lt;a href="http://www.realworldnlpbook.com/blog/improving-sentiment-analyzer-using-elmo.html"&gt;three&lt;/a&gt; &lt;a href="http://www.realworldnlpbook.com/blog/building-seq2seq-machine-translation-models-using-allennlp.html"&gt;posts&lt;/a&gt;, I talked mainly about how to train NLP models using &lt;a href="https://allennlp.org/"&gt;AllenNLP&lt;/a&gt;. AllenNLP is a great NLP framework especially for quickly prototyping research models. However, it is not optimized for scalability or portability, and it comes with a ton of dependencies that are handy when you …&lt;/p&gt;</summary><content type="html">&lt;p&gt;In the &lt;a href="http://www.realworldnlpbook.com/blog/training-sentiment-analyzer-using-allennlp.html"&gt;last&lt;/a&gt; &lt;a href="http://www.realworldnlpbook.com/blog/improving-sentiment-analyzer-using-elmo.html"&gt;three&lt;/a&gt; &lt;a href="http://www.realworldnlpbook.com/blog/building-seq2seq-machine-translation-models-using-allennlp.html"&gt;posts&lt;/a&gt;, I talked mainly about how to train NLP models using &lt;a href="https://allennlp.org/"&gt;AllenNLP&lt;/a&gt;. AllenNLP is a great NLP framework especially for quickly prototyping research models. However, it is not optimized for scalability or portability, and it comes with a ton of dependencies that are handy when you are doing research but you may not want in your production environment.&lt;/p&gt;
 &lt;p&gt;On the other hand, there are other deep learning frameworks that excel in different areas. For example, Caffe2 is designed for scale and portability, especially mobile deployment. TensorFlow, probably the most popular deep learning framework as of today, also has &lt;a href="https://www.tensorflow.org/lite/"&gt;TF Lite&lt;/a&gt; and &lt;a href="https://js.tensorflow.org/"&gt;TensorFlow.js&lt;/a&gt;, which enable mobile and Web deployment of TensorFlow models, respectively. &lt;/p&gt;
 &lt;p&gt;Is it possible to still use AllenNLP to quickly prototype and train NLP models and deploy them using other frameworks mentioned above? The answer is yes, and this article explains how.  &lt;/p&gt;
 &lt;h2&gt;Part-of-Speech (POS) Tagging and Universal POS Tagset&lt;/h2&gt;
