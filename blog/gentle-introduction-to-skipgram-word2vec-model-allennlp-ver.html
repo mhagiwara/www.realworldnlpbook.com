@@ -33,12 +33,12 @@
 <!-- End Google Analytics -->
 
 <meta name="author" content="Masato Hagiwara" />
-<meta name="description" content="The SkipGram model (so called &#34;word2vec&#34;) is one of the most important concepts in modern NLP, yet many people simply use its implementation and/or pre-trained embeddings, and few people fully understand how the model is actually built. In this article, I&#39;ll cover: What the SkipGram model is How to …" />
+<meta name="description" content="The Skip-gram model (so called &#34;word2vec&#34;) is one of the most important concepts in modern NLP, yet many people simply use its implementation and/or pre-trained embeddings, and few people fully understand how the model is actually built. In this article, I&#39;ll cover: What the Skip-gram model is How to …" />
 <meta name="keywords" content="Word Embeddings, word2vec, AllenNLP">
 
 <meta property="og:site_name" content="Real-World Natural Language Processing"/>
-<meta property="og:title" content="A Gentle Introduction to SkipGram (word2vec) Model — AllenNLP ver."/>
-<meta property="og:description" content="The SkipGram model (so called &#34;word2vec&#34;) is one of the most important concepts in modern NLP, yet many people simply use its implementation and/or pre-trained embeddings, and few people fully understand how the model is actually built. In this article, I&#39;ll cover: What the SkipGram model is How to …"/>
+<meta property="og:title" content="A Gentle Introduction to Skip-gram (word2vec) Model — AllenNLP ver."/>
+<meta property="og:description" content="The Skip-gram model (so called &#34;word2vec&#34;) is one of the most important concepts in modern NLP, yet many people simply use its implementation and/or pre-trained embeddings, and few people fully understand how the model is actually built. In this article, I&#39;ll cover: What the Skip-gram model is How to …"/>
 <meta property="og:locale" content="en_US"/>
 <meta property="og:url" content="http://www.realworldnlpbook.com/blog/gentle-introduction-to-skipgram-word2vec-model-allennlp-ver.html"/>
 <meta property="og:type" content="article"/>
@@ -51,7 +51,7 @@
 <meta property="article:tag" content="AllenNLP"/>
 <meta property="og:image" content="http://www.realworldnlpbook.com/blog/images/skipgram.png">
 
-  <title>A Gentle Introduction to SkipGram (word2vec) Model — AllenNLP ver. &ndash; Real-World Natural Language Processing</title>
+  <title>A Gentle Introduction to Skip-gram (word2vec) Model — AllenNLP ver. &ndash; Real-World Natural Language Processing</title>
 
 </head>
 <body>
@@ -87,7 +87,7 @@
 <article class="single">
   <header>
       
-    <h1 id="gentle-introduction-to-skipgram-word2vec-model-allennlp-ver">A Gentle Introduction to SkipGram (word2vec) Model — AllenNLP ver.</h1>
+    <h1 id="gentle-introduction-to-skipgram-word2vec-model-allennlp-ver">A Gentle Introduction to Skip-gram (word2vec) Model — AllenNLP ver.</h1>
     <p>
           Posted on Sat 02 February 2019 in <a href="http://www.realworldnlpbook.com/blog/category/word-embeddings.html">Word Embeddings</a>
 
@@ -97,10 +97,10 @@
 
 
   <div>
-    <p>The SkipGram model (so called "word2vec") is one of the most important concepts in modern NLP, yet many people simply use <a href="https://code.google.com/archive/p/word2vec/">its implementation</a> and/or pre-trained embeddings, and few people fully understand how the model is actually built. In this article, I'll cover:</p>
+    <p>The Skip-gram model (so called "word2vec") is one of the most important concepts in modern NLP, yet many people simply use <a href="https://code.google.com/archive/p/word2vec/">its implementation</a> and/or pre-trained embeddings, and few people fully understand how the model is actually built. In this article, I'll cover:</p>
 <ul>
-<li>What the SkipGram model is</li>
-<li>How to train the SkipGram (word2vec) model from scratch</li>
+<li>What the Skip-gram model is</li>
+<li>How to train the Skip-gram (word2vec) model from scratch</li>
 <li>How to evaluate the word embeddings</li>
 </ul>
 <p>You can see <a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/embeddings/word2vec.py">the full script</a> that I wrote for this article. The script relies on <a href="https://allennlp.org/">AllenNLP</a>, which makes it well-structured and readable, but none of the explanations below rely on specifics of AllenNLP. </p>
@@ -113,8 +113,8 @@
 </ul>
 <p>In this example, I just made up those three-dimensional vectors, but you can see the first element of each word represents some sort of "animal-ness." If you want to calculate some semantic similarity between words, you can do it by looking at the "angle" between two vectors (more technically, this is called a <em>cosine similarity</em>). If you want to train another NLP model on top of those representations, you can use them as the input to your machine learning model. </p>
 <p>Now, there's one important piece of information missing from the discussion so far. How do you come up with those float numbers? It would be virtually impossible to assign them by hand. There are hundreds of thousands of unique words in a typical large corpus, and the arrays should be at least around 100-dimensional long to be effective, which means there are more than tens of millions of numbers that you need to tweak.</p>
-<p>But more importantly, what should those numbers look like? How do you determine whether you should assign a 0.8 to the first element of the "dog" vector, or 0.7, or any other numbers? That's exactly what the SkipGram model is designed to do, which I'll explain below.</p>
-<h2>SkipGram Model</h2>
+<p>But more importantly, what should those numbers look like? How do you determine whether you should assign a 0.8 to the first element of the "dog" vector, or 0.7, or any other numbers? That's exactly what the Skip-gram model is designed to do, which I'll explain below.</p>
+<h2>Skip-gram Model</h2>
 <p>One possible way to do this without teaching the computer what "dog" means is to use its context. For example, what words tend to appear together with the word "dog" if you look at its appearances in a large text corpus? "Pet," "tail," "smell," "bark," "puppy," ... there can be countless options. How about "cat"? Maybe "pet," "tail," "fur," "meow," "kitten," and so on. Because "dog" and "cat" have a lot in common conceptually (they are both popular pet animals with a tail, etc. etc.), these two sets of context words also have large overlap. In other words, you can guess how close two words are to each other by looking at what other words appear in the same context. This is called <em>the distributional hypothesis</em> and has a long history in NLP.</p>
 <p>We are now one step closer. If two words have a lot of context words in common, we can give similar vectors to those two words. You can think of a word vector as a "compressed" representation of its context words. Then the question becomes: how can you "de-compress" a word vector to obtain their context words? How can you even represent a set of context words mathematically? Conceptually, we'd like to come up with a model that does something like this: </p>
 <div class="highlight"><pre><span></span>&quot;dog&quot; -&gt; (0.8, 0.3, 0.1) -&gt; (de-compressor) -&gt; {&quot;pet&quot;, &quot;tail&quot;, &quot;smell&quot;, &quot;bark&quot;, ...}  
@@ -132,14 +132,14 @@
 
 
 <p>All the "de-compressor" needs to do is expand the word embedding vector (which has three dimensions) to another vector of N dimensions.</p>
-<p>This may sound very familiar to some of you—yes, it's exactly what linear layers (aka fully-connected layers) do. <strong>Linear layers convert a vector of one size to another of different size in a linear fashion.</strong> Putting everything together, the architecture of the SkipGram model looks like the following figure:</p>
+<p>This may sound very familiar to some of you—yes, it's exactly what linear layers (aka fully-connected layers) do. <strong>Linear layers convert a vector of one size to another of different size in a linear fashion.</strong> Putting everything together, the architecture of the skip-gram model looks like the following figure:</p>
 <figure style="text-align: center">
     <img src="images/skipgram.png"/>
-    <figcaption>Figure: SkipGram model</figcaption>
+    <figcaption>Figure: Skip-gram model</figcaption>
 </figure>
 
 <h2>Softmax — Converting Scores to a Probability Distribution</h2>
-<p>Hopefully I successfully convinced you that SkipGram is actually a lot simpler than most people think. Now, let's talk about how to "train" it and learn the word embeddings we want. The key here is to turn this into a classification task, where the network predicts what words appear in the context. The "context" here simply means a window of a fixed size (for example, 5+5 words on the both sides). This is actually a "fake" task because we are not interested in the prediction of the model per se, but rather in the by-product (word embeddings) produced by training the model.</p>
+<p>Hopefully I successfully convinced you that Skip-gram is actually a lot simpler than most people think. Now, let's talk about how to "train" it and learn the word embeddings we want. The key here is to turn this into a classification task, where the network predicts what words appear in the context. The "context" here simply means a window of a fixed size (for example, 5+5 words on the both sides). This is actually a "fake" task because we are not interested in the prediction of the model per se, but rather in the by-product (word embeddings) produced by training the model.</p>
 <p>It is relatively easy to make a neural network solve a classification task. You need two things:</p>
 <ul>
 <li>Modify the network so that it produces a probability distribution</li>
@@ -156,9 +156,9 @@
 <li>the predicted probability distribution produced by the neural network (output of softmax) and,</li>
 <li>the "target" probability distribution where the probability of the correct class is 1.0 and everything else is 0.0</li>
 </ol>
-<p>The predictions made by the SkipGram model get closer and closer to the actual context words, and word embeddings are learned at the same time. </p>
+<p>The predictions made by the Skip-gram model get closer and closer to the actual context words, and word embeddings are learned at the same time. </p>
 <h2>Negative Sampling — Faking the Fake Task</h2>
-<p>Theoretically, you can now build your own SkipGram model and train word embeddings. In practice, however, there is one issue in doing so—speed. Remember the softmax operation explained above first compresses scores to a range (0 to 1) and normalizes everything. This doesn't seem obvious, but if there are millions of words in the vocabulary, softmax needs to go over the list of millions of words <em>twice</em>.</p>
+<p>Theoretically, you can now build your own Skip-gram model and train word embeddings. In practice, however, there is one issue in doing so—speed. Remember the softmax operation explained above first compresses scores to a range (0 to 1) and normalizes everything. This doesn't seem obvious, but if there are millions of words in the vocabulary, softmax needs to go over the list of millions of words <em>twice</em>.</p>
 <p>Then, after computing the cross entropy loss, depending on how far the desired outcome (if the word is in the context or not) and the predicted probability for each word are, the network needs to adjust word embeddings for <em>every single word</em> in the millions of words, even for the ones that have nothing to do with the target word and the context words. You need to run this training iteration for every single word in a large corpus. You can imagine how slow this model could be even without actually running it!</p>
 <p>The key here is that the network tries to update word embeddings even for millions of other words that have nothing to do with the context. For example, even when you are thinking about the relationship between "dog" and "bark," the network needs to worry about updating the embeddings for, say, "pizza" and "electronics." This happens for every single word in a corpus. </p>
 <p>How could we make this much more efficient? The key is to consider a much smaller subset of words at a time, instead of the entire vocabulary. Specifically, in addition to the words that did appear in the context (e.g., "bark", "tail", etc.), consider a small set of randomly sampled words (e.g., "pizza", "electronics", "idea", etc.) that <em>did not</em> appear in the context. This approach is called <em>negative sampling</em>.</p>
@@ -178,7 +178,7 @@
 
 <p><code>self.neg_sample_probs</code> contains the pre-computed probability distribution over all the words in the vocabulary. See <a href="https://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf">the original paper</a> for the details of this sampling procedure.</p>
 <h2>Subsampling Frequent Words</h2>
-<p>There's one final bit of detail that you need to know before you can actually train the Skipgram model—subsampling of frequent words. </p>
+<p>There's one final bit of detail that you need to know before you can actually train the Skip-gram model—subsampling of frequent words. </p>
 <p>In a typical natural language corpus, there are a small number of words that appear frequently. Often too frequently—in fact, the most common English word "the" appears 5% of time in a typical English corpus, which means, on average, one out of every 20 words in English text is "the"!</p>
 <p>Why would this be a problem? First, frequent words are not as useful as other, less frequent words. For example, knowing "bark" appears as a context word conveys a lot more information about "dog" than knowing "the" also appears as its context word, because "the" appears in the context of almost every word in English. But more importantly, they are huge waste of computation, because "the" as a context word won't affect word embeddings very much. You can probably skip most occurrences of "the" without affecting the quality of word embeddings.</p>
 <p>Subsampling of frequent words is inspired by this insight. The idea is that you skip occurrences of a word with a higher probability if the word occurs more frequently in the corpus. There's a specific formula used to determine this probability from the word's frequency (see <a href="https://papers.nips.cc/paper/5021-distributed-representations-of-words-and-phrases-and-their-compositionality.pdf">the paper</a> for the details), but here it is probably enough to know that the higher the word's frequency in the corpus, the more likely the word is skipped. </p>
@@ -324,7 +324,7 @@
 </table>
 <p>The result is more mixed than the previous one, but all the word have at least something to do with snow. </p>
 <h2>Evaluating Word Embeddings</h2>
-<p>After trying a couple more words, you may be confident that your SkipGram model is producing word embeddings that capture at least some semantic information. But how do you objectively measure the quality of word embeddings? This is the final step in this article.</p>
+<p>After trying a couple more words, you may be confident that your Skip-gram model is producing word embeddings that capture at least some semantic information. But how do you objectively measure the quality of word embeddings? This is the final step in this article.</p>
 <p>The way we'll evaluate the quality of word embeddings is to see how closely the similarities computed by embeddings (like the ones above) match the actual similarities  assigned by human judgements. I used <a href="https://fh295.github.io/simlex.html">SimLex-999</a>,  a dataset containing 999 word pairs and their similarities that are based on human annotations. Here's an excerpt from the dataset. The first two columns are words, and third and fourth columns are part of speech and similarity. </p>
 <div class="highlight"><pre><span></span>night   day     N       1.88
 south   north   N       2.2

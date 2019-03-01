@@ -1,14 +1,14 @@
-Title: A Gentle Introduction to SkipGram (word2vec) Model — AllenNLP ver.
+Title: A Gentle Introduction to Skip-gram (word2vec) Model — AllenNLP ver.
 Date: 2019-02-02 00:00
 Category: Word Embeddings
 Tags: Word Embeddings, word2vec, AllenNLP
 Cover: images/skipgram.png
 slug: gentle-introduction-to-skipgram-word2vec-model-allennlp-ver
 
-The SkipGram model (so called "word2vec") is one of the most important concepts in modern NLP, yet many people simply use [its implementation](https://code.google.com/archive/p/word2vec/) and/or pre-trained embeddings, and few people fully understand how the model is actually built. In this article, I'll cover:
+The Skip-gram model (so called "word2vec") is one of the most important concepts in modern NLP, yet many people simply use [its implementation](https://code.google.com/archive/p/word2vec/) and/or pre-trained embeddings, and few people fully understand how the model is actually built. In this article, I'll cover:
 
-* What the SkipGram model is
-* How to train the SkipGram (word2vec) model from scratch
+* What the Skip-gram model is
+* How to train the Skip-gram (word2vec) model from scratch
 * How to evaluate the word embeddings
 
 You can see [the full script](https://github.com/mhagiwara/realworldnlp/blob/master/examples/embeddings/word2vec.py) that I wrote for this article. The script relies on [AllenNLP](https://allennlp.org/), which makes it well-structured and readable, but none of the explanations below rely on specifics of AllenNLP. 
@@ -25,9 +25,9 @@ In this example, I just made up those three-dimensional vectors, but you can see
 
 Now, there's one important piece of information missing from the discussion so far. How do you come up with those float numbers? It would be virtually impossible to assign them by hand. There are hundreds of thousands of unique words in a typical large corpus, and the arrays should be at least around 100-dimensional long to be effective, which means there are more than tens of millions of numbers that you need to tweak.
 
-But more importantly, what should those numbers look like? How do you determine whether you should assign a 0.8 to the first element of the "dog" vector, or 0.7, or any other numbers? That's exactly what the SkipGram model is designed to do, which I'll explain below.
+But more importantly, what should those numbers look like? How do you determine whether you should assign a 0.8 to the first element of the "dog" vector, or 0.7, or any other numbers? That's exactly what the Skip-gram model is designed to do, which I'll explain below.
 
-## SkipGram Model
+## Skip-gram Model
 
 One possible way to do this without teaching the computer what "dog" means is to use its context. For example, what words tend to appear together with the word "dog" if you look at its appearances in a large text corpus? "Pet," "tail," "smell," "bark," "puppy," ... there can be countless options. How about "cat"? Maybe "pet," "tail," "fur," "meow," "kitten," and so on. Because "dog" and "cat" have a lot in common conceptually (they are both popular pet animals with a tail, etc. etc.), these two sets of context words also have large overlap. In other words, you can guess how close two words are to each other by looking at what other words appear in the same context. This is called _the distributional hypothesis_ and has a long history in NLP.
 
@@ -51,16 +51,16 @@ The only remaining piece of the model is how to come up with those "scores."  If
 
 All the "de-compressor" needs to do is expand the word embedding vector (which has three dimensions) to another vector of N dimensions.
 
-This may sound very familiar to some of you—yes, it's exactly what linear layers (aka fully-connected layers) do. **Linear layers convert a vector of one size to another of different size in a linear fashion.** Putting everything together, the architecture of the SkipGram model looks like the following figure:
+This may sound very familiar to some of you—yes, it's exactly what linear layers (aka fully-connected layers) do. **Linear layers convert a vector of one size to another of different size in a linear fashion.** Putting everything together, the architecture of the skip-gram model looks like the following figure:
 
 <figure style="text-align: center">
 	<img src="images/skipgram.png"/>
-	<figcaption>Figure: SkipGram model</figcaption>
+	<figcaption>Figure: Skip-gram model</figcaption>
 </figure>
 
 ## Softmax — Converting Scores to a Probability Distribution
 
-Hopefully I successfully convinced you that SkipGram is actually a lot simpler than most people think. Now, let's talk about how to "train" it and learn the word embeddings we want. The key here is to turn this into a classification task, where the network predicts what words appear in the context. The "context" here simply means a window of a fixed size (for example, 5+5 words on the both sides). This is actually a "fake" task because we are not interested in the prediction of the model per se, but rather in the by-product (word embeddings) produced by training the model.
+Hopefully I successfully convinced you that Skip-gram is actually a lot simpler than most people think. Now, let's talk about how to "train" it and learn the word embeddings we want. The key here is to turn this into a classification task, where the network predicts what words appear in the context. The "context" here simply means a window of a fixed size (for example, 5+5 words on the both sides). This is actually a "fake" task because we are not interested in the prediction of the model per se, but rather in the by-product (word embeddings) produced by training the model.
 
 It is relatively easy to make a neural network solve a classification task. You need two things:
 
@@ -79,11 +79,11 @@ Cross entropy is a loss function used to measure the distance between two probab
 1. the predicted probability distribution produced by the neural network (output of softmax) and,
 2. the "target" probability distribution where the probability of the correct class is 1.0 and everything else is 0.0
 
-The predictions made by the SkipGram model get closer and closer to the actual context words, and word embeddings are learned at the same time. 
+The predictions made by the Skip-gram model get closer and closer to the actual context words, and word embeddings are learned at the same time. 
 
 ## Negative Sampling — Faking the Fake Task
 
-Theoretically, you can now build your own SkipGram model and train word embeddings. In practice, however, there is one issue in doing so—speed. Remember the softmax operation explained above first compresses scores to a range (0 to 1) and normalizes everything. This doesn't seem obvious, but if there are millions of words in the vocabulary, softmax needs to go over the list of millions of words _twice_.
+Theoretically, you can now build your own Skip-gram model and train word embeddings. In practice, however, there is one issue in doing so—speed. Remember the softmax operation explained above first compresses scores to a range (0 to 1) and normalizes everything. This doesn't seem obvious, but if there are millions of words in the vocabulary, softmax needs to go over the list of millions of words _twice_.
 
 Then, after computing the cross entropy loss, depending on how far the desired outcome (if the word is in the context or not) and the predicted probability for each word are, the network needs to adjust word embeddings for _every single word_ in the millions of words, even for the ones that have nothing to do with the target word and the context words. You need to run this training iteration for every single word in a large corpus. You can imagine how slow this model could be even without actually running it!
 
@@ -111,7 +111,7 @@ negative_out = np.random.choice(a=self.vocab.get_vocab_size('token_in'),
 
 ## Subsampling Frequent Words
 
-There's one final bit of detail that you need to know before you can actually train the Skipgram model—subsampling of frequent words. 
+There's one final bit of detail that you need to know before you can actually train the Skip-gram model—subsampling of frequent words. 
 
 In a typical natural language corpus, there are a small number of words that appear frequently. Often too frequently—in fact, the most common English word "the" appears 5% of time in a typical English corpus, which means, on average, one out of every 20 words in English text is "the"!
 
@@ -197,7 +197,7 @@ The result is more mixed than the previous one, but all the word have at least s
 
 ## Evaluating Word Embeddings
 
-After trying a couple more words, you may be confident that your SkipGram model is producing word embeddings that capture at least some semantic information. But how do you objectively measure the quality of word embeddings? This is the final step in this article.
+After trying a couple more words, you may be confident that your Skip-gram model is producing word embeddings that capture at least some semantic information. But how do you objectively measure the quality of word embeddings? This is the final step in this article.
 
 The way we'll evaluate the quality of word embeddings is to see how closely the similarities computed by embeddings (like the ones above) match the actual similarities  assigned by human judgements. I used [SimLex-999](https://fh295.github.io/simlex.html),  a dataset containing 999 word pairs and their similarities that are based on human annotations. Here's an excerpt from the dataset. The first two columns are words, and third and fourth columns are part of speech and similarity. 
 
