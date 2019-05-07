@@ -1,5 +1,391 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>Real-World Natural Language Processing</title><link href="http://www.realworldnlpbook.com/blog/" rel="alternate"></link><link href="http://www.realworldnlpbook.com/blog/feeds/all.atom.xml" rel="self"></link><id>http://www.realworldnlpbook.com/blog/</id><updated>2019-02-02T00:00:00-05:00</updated><entry><title>A Gentle Introduction to Skip-gram (word2vec) Model — AllenNLP ver.</title><link href="http://www.realworldnlpbook.com/blog/gentle-introduction-to-skipgram-word2vec-model-allennlp-ver.html" rel="alternate"></link><published>2019-02-02T00:00:00-05:00</published><updated>2019-02-02T00:00:00-05:00</updated><author><name>Masato Hagiwara</name></author><id>tag:www.realworldnlpbook.com,2019-02-02:/blog/gentle-introduction-to-skipgram-word2vec-model-allennlp-ver.html</id><summary type="html">&lt;p&gt;The Skip-gram model (so called "word2vec") is one of the most important concepts in modern NLP, yet many people simply use &lt;a href="https://code.google.com/archive/p/word2vec/"&gt;its implementation&lt;/a&gt; and/or pre-trained embeddings, and few people fully understand how the model is actually built. In this article, I'll cover:&lt;/p&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Real-World Natural Language Processing</title><link href="http://www.realworldnlpbook.com/blog/" rel="alternate"></link><link href="http://www.realworldnlpbook.com/blog/feeds/all.atom.xml" rel="self"></link><id>http://www.realworldnlpbook.com/blog/</id><updated>2019-05-02T00:00:00-04:00</updated><entry><title>Training a Shakespeare Reciting Monkey using RL and SeqGAN</title><link href="http://www.realworldnlpbook.com/blog/training-a-shakespeare-reciting-monkey-using-rl-and-seqgan.html" rel="alternate"></link><published>2019-05-02T00:00:00-04:00</published><updated>2019-05-02T00:00:00-04:00</updated><author><name>Masato Hagiwara</name></author><id>tag:www.realworldnlpbook.com,2019-05-02:/blog/training-a-shakespeare-reciting-monkey-using-rl-and-seqgan.html</id><summary type="html">&lt;h2&gt;Tackle the Monkey First&lt;/h2&gt;
+&lt;p&gt;There is this article titled &lt;a href="https://blog.x.company/tackle-the-monkey-first-90fd6223e04d"&gt;Tackle the monkey first&lt;/a&gt; written by Astro Teller, who leads Google's moonshot lab "X." The article begins "Let’s say you’re trying to teach a monkey how to recite Shakespeare while on a pedestal. How should you allocate your time …&lt;/p&gt;</summary><content type="html">&lt;h2&gt;Tackle the Monkey First&lt;/h2&gt;
+&lt;p&gt;There is this article titled &lt;a href="https://blog.x.company/tackle-the-monkey-first-90fd6223e04d"&gt;Tackle the monkey first&lt;/a&gt; written by Astro Teller, who leads Google's moonshot lab "X." The article begins "Let’s say you’re trying to teach a monkey how to recite Shakespeare while on a pedestal. How should you allocate your time and money between training the monkey and building the pedestal?"&lt;/p&gt;
+&lt;figure style="display: block; text-align: center;"&gt;
+    &lt;img src="images/monkey-pedestal.png" style="width: 60%;"/&gt;
+    &lt;figcaption&gt;Monkey reciting Shakespeare on a pedestal&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&lt;p&gt;The moral of the story is that you should spend zero time building the pedestal and focus on the most difficult part, which is training the Shakespeare reciting monkey, although many people tend to rush off and start building the pedestal instead just to have a sense of progress and to have at least something to show to their boss. A Shakespeare reciting monkey without a pedestal is still an incredible achievement, while a pedestal is just a pedestal without the monkey.&lt;/p&gt;
+&lt;p&gt;I love this article—I can't remember how many times I was tempted to "build the pedestal" first when I had choices between projects or some components and I realized I was about to do something easier instead of tackling the most difficult part. Re-reading this article almost always helps me go back on track. "When in doubt, do something more difficult." is one of my life mottoes. In fact, I liked this article so much that now I write "tackle the monkey first" at the top of my to-do list to constantly remind me of the most important thing every day (and I thank an ex-coworker of mine at Duolingo for sharing this wonderful article).&lt;/p&gt;
+&lt;p&gt;So, I decided to tackle the monkey first. &lt;/p&gt;
+&lt;h2&gt;Infinite Monkey Theorem&lt;/h2&gt;
+&lt;figure style="display: block; text-align: center;"&gt;
+    &lt;img src="images/monkey-typewriter.png" style="width: 60%;"/&gt;
+    &lt;figcaption&gt;Monkey at a typewriter&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&lt;p&gt;I don't know where Astro Teller got the inspiration of Shakespeare reciting monkeys, but the concept is not entirely new. In mathematics and probability theory, there's a famous thought experiment called "Infinite Monkey Theorem," which states that a monkey sitting at a typewriter hitting keys at random will eventually produce the complete works of Shakespeare, such as the entire text of Hamlet, purely by chance given an infinite amount of time. &lt;/p&gt;
+&lt;p&gt;This is somewhat counter-intuitive, but there's a nice explanation on &lt;a href="https://en.wikipedia.org/wiki/Infinite_monkey_theorem"&gt;the Wikipedia page&lt;/a&gt; on why this is the case, so we can borrow it here—suppose there are 50 keys on the typewriter and the monkey is pressing the keys uniformly and independently. The chance of this monkey accidentally producing a word "banana" is 1/50 to the sixths power, which is less than one in 15 billion. Let this probability be p. &lt;/p&gt;
+&lt;p&gt;Now, let's think about giving this monkey a second chance. The chance of this monkey producing the word "banana" within two trials is 1 - (1 - p)^2, which is about one in 8 billion. Still extremely small likelihood, but not zero, and it increases as the number of trials increases. After one million trials, this probability is about 0.9999, and after ten billion, it is about 0.5273. The probability 1 - (1 - p)^n asymptotically reaches 1.0 as n gets bigger. This informally proves that a monkey hitting random keys will eventually produce a word "banana" purely by chance.&lt;/p&gt;
+&lt;p&gt;But we are not just talking about producing a single word—it's about producing the entire work of Shakespeare. For example, there are about 130,000 characters in Hamlet. The probability of a monkey producing the entire text of Hamlet by chance after the first trial is one in 3.4 x 10^183,946, according to the Wikipedia page. To get a feel of how small this probability is, let's quote a paragraph from there—&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Even if every proton in the observable universe were a monkey with a typewriter, typing from the Big Bang until the end of the universe (when protons might no longer exist), they would still need a still far greater amount of time – more than three hundred and sixty thousand orders of magnitude longer – to have even a 1 in 10^500 chance of success.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;This is a bit discouraging—in theory, a typewriter-hitting monkey will produce Hamlet at some point, but in practice, none of us can afford a universe full of monkeys nor billions of years. If it takes a universe full of monkeys more than billions of years to have an even slightest chance of reciting Shakespeare, it is understandable that you would rather be building the pedestal instead. &lt;/p&gt;
+&lt;h2&gt;Training Monkeys&lt;/h2&gt;
+&lt;p&gt;But if you think of it, a monkey hitting typewriter keys uniformly and independently may be an interesting mathematical device, but not a realistic one. Researchers found that certain types of monkeys, especially chimpanzees, are highly intelligent. You can probably train the monkey so that they have a higher chance of reproducing Shakespeare before you wait till the end of the universe.&lt;/p&gt;
+&lt;p&gt;For example, in English text, the letter E appears a lot more frequently than, say, the letter Z does. If you want to reproduce Hamlet, for example, hitting the E key more often than other letters is a good strategy. If you can teach this simple bias over the distribution of English letters to the monkey (let's call him George), he will have a far greater chance of reciting Shakespeare.&lt;/p&gt;
+&lt;figure style="display: block; text-align: center;"&gt;
+    &lt;img src="images/monkey-banana.png" style="width: 60%;"/&gt;
+    &lt;figcaption&gt;Monkey at a typewriter with bananas&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&lt;p&gt;And here's the tool that many animal trainers agree is useful—rewards. You can reinforce George's positive behavior by giving him some bananas. Specifically, when the text George produced resembles Shakespeare's work, you'll give him some bananas. The more it looks like Shakespeare's work, the more bananas he'll be rewarded with. On the other hand, when he produces some garbage that doesn't look anything from Shakespeare, he'll get no bananas. George has very little idea what he's done right or wrong, but if you keep doing this long enough, you expect that he'll figure out how he should be typing in order to get more rewards, and what he produces will start to look like Shakespeare's work.&lt;/p&gt;
+&lt;h2&gt;Reinforcement Learning (RL)&lt;/h2&gt;
+&lt;p&gt;In machine learning, this framework is called Reinforcement Learning (RL). There are many good courses, books, and Internet articles that you can refer to to learn RL, so in what follows I'll only briefly describe some core concepts.&lt;/p&gt;
+&lt;figure style="display: block; text-align: center;"&gt;
+    &lt;img src="images/rl.png" style="width: 100%;"/&gt;
+    &lt;figcaption&gt;Reinforcement Learning (RL)&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&lt;p&gt;There is an agent (= George the monkey) in an environment. The agent takes some actions (= typing keys) based on its state (= what George's thinking), and is given some rewards (= bananas) depending on the outcome (= produced text). The goal here is to optimize the actions of the agent so that it can maximize the future expected rewards.&lt;/p&gt;
+&lt;p&gt;Specifically, we are going to use one family of reinforcement learning algorithms called policy gradient. In policy gradient, the policy (what actions the agent should take in a particular state) is explicitly modeled and optimized. We'll be using one particular type of policy gradient algorithm called REINFORCE, which uses Monte-Carlo methods to estimate the expected rewards, although we are not going in to the details of the algorithm in this post.&lt;/p&gt;
+&lt;h2&gt;Implementing a Shakespeare reciting monkey&lt;/h2&gt;
+&lt;p&gt;In order to train the Shakespeare reciting monkey, I'm going to use a recurrent neural network (RNN), namely, an LSTM RNN, to build a text generation system. As a general framework, an RNN receives a vector, updates its internal states, and produces another vector at a timestep. The output vector is then fed into a linear layer to expand (or shrink) it to another vector, from which predictions are made.&lt;/p&gt;
+&lt;p&gt;Since we are simulating a monkey typing a typewriter, we generate and feed individual characters to the RNN. Even whitespaces and punctuations are treated as individual "tokens." But as with typical language generation models, there is no actual "input," so we feed the generated character at the previous timestep as the input to the next timestep. The length of the output vector is the same as the number of all the alphabets we consider. The following figure illustrates the architecture.&lt;/p&gt;
+&lt;figure style="display: block; text-align: center;"&gt;
+    &lt;img src="images/text-generation.png" style="width: 100%;"/&gt;
+    &lt;figcaption&gt;Text generation using RNN&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&lt;p&gt;I implemented this RNN language generation model as follows. It's a (somewhat weird) mix of AllenNLP and PyTorch, but hopefully it's not terribly difficult to read. &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;RNNLanguageModel&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Model&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="fm"&gt;__init__&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;Vocabulary&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;-&amp;gt;&lt;/span&gt; &lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="nb"&gt;super&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="fm"&gt;__init__&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+        &lt;span class="n"&gt;token_embedding&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Embedding&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;num_embeddings&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_vocab_size&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;tokens&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+                                    &lt;span class="n"&gt;embedding_dim&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;EMBEDDING_SIZE&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;embedder&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;BasicTextFieldEmbedder&lt;/span&gt;&lt;span class="p"&gt;({&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;tokens&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;token_embedding&lt;/span&gt;&lt;span class="p"&gt;})&lt;/span&gt;
+
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;rnn&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;PytorchSeq2SeqWrapper&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;
+            &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;LSTM&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;EMBEDDING_SIZE&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;HIDDEN_SIZE&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;batch_first&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;True&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;hidden2out&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Linear&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;in_features&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;rnn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_output_dim&lt;/span&gt;&lt;span class="p"&gt;(),&lt;/span&gt;
+                                          &lt;span class="n"&gt;out_features&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_vocab_size&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;tokens&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;generate&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;max_len&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="nb"&gt;int&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;-&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;Tuple&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;List&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="nb"&gt;str&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="n"&gt;Tensor&lt;/span&gt;&lt;span class="p"&gt;]:&lt;/span&gt;
+
+        &lt;span class="n"&gt;start_symbol_idx&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_token_index&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;START_SYMBOL&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;tokens&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;end_symbol_idx&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_token_index&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;END_SYMBOL&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;tokens&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+        &lt;span class="n"&gt;log_likelihood&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mf"&gt;0.&lt;/span&gt;
+        &lt;span class="n"&gt;words&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[]&lt;/span&gt;
+        &lt;span class="n"&gt;state&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;zeros&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;HIDDEN_SIZE&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;zeros&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;HIDDEN_SIZE&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+
+        &lt;span class="n"&gt;word_idx&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;start_symbol_idx&lt;/span&gt;
+
+        &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;i&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;range&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;max_len&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+            &lt;span class="n"&gt;tokens&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;tensor&lt;/span&gt;&lt;span class="p"&gt;([[&lt;/span&gt;&lt;span class="n"&gt;word_idx&lt;/span&gt;&lt;span class="p"&gt;]])&lt;/span&gt;
+
+            &lt;span class="n"&gt;embeddings&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;embedder&lt;/span&gt;&lt;span class="p"&gt;({&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;tokens&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;tokens&lt;/span&gt;&lt;span class="p"&gt;})&lt;/span&gt;
+            &lt;span class="n"&gt;output&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;state&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;rnn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;_module&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;embeddings&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;state&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+            &lt;span class="n"&gt;output&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;hidden2out&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;output&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+            &lt;span class="n"&gt;log_prob&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;log_softmax&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;output&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="n"&gt;dim&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+            &lt;span class="n"&gt;dist&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;exp&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;log_prob&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+            &lt;span class="n"&gt;word_idx&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;multinomial&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;
+                &lt;span class="n"&gt;dist&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;num_samples&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;replacement&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;False&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;item&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+            &lt;span class="n"&gt;log_likelihood&lt;/span&gt; &lt;span class="o"&gt;+=&lt;/span&gt; &lt;span class="n"&gt;log_prob&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;word_idx&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+
+            &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;word_idx&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="n"&gt;end_symbol_idx&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+                &lt;span class="k"&gt;break&lt;/span&gt;
+
+            &lt;span class="n"&gt;words&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;append&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_token_from_index&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;word_idx&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;tokens&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;words&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;log_likelihood&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;After computing the logits (&lt;code&gt;output&lt;/code&gt;) by applying the linear layer, they are converted to a probability distribution (by applying &lt;code&gt;log_softmax&lt;/code&gt; then &lt;code&gt;exp&lt;/code&gt;), from which the next word is sampled by &lt;code&gt;multinomial&lt;/code&gt;. &lt;/p&gt;
+&lt;p&gt;Make sure that the generate function returns the log likelihood of the generated text. We will need it later. The log likelihood of the sequence is simply the sum of log of individual probabilities (which you already calculated by &lt;code&gt;log_softmax&lt;/code&gt; above).&lt;/p&gt;
+&lt;p&gt;Now, how do we calculate the reward? There could be a million different ways to do this, but I chose to use one of my favorite metrics for textual similarity, &lt;a href="https://aclweb.org/anthology/W15-3049"&gt;chrF&lt;/a&gt;. chrF is simply the F-measure of character n-grams between the prediction and the reference. The more similar these two are, the higher the value will be. The code below random samples 100 lines from the training set (Shakespeare's &lt;em&gt;Hamlet&lt;/em&gt;), calculates &lt;a href="https://www.nltk.org/_modules/nltk/translate/chrf_score.html"&gt;the chrF metric using NLTK&lt;/a&gt; between the generated text and each sampled line, and returns the average: &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;calculate_reward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;generated&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="nb"&gt;str&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;train_set&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;List&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="nb"&gt;str&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="n"&gt;num_lines&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;100&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;-&amp;gt;&lt;/span&gt; &lt;span class="nb"&gt;float&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="n"&gt;line_ids&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;random&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;choice&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;len&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;train_set&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="n"&gt;size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;num_lines&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="n"&gt;chrf_total&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mf"&gt;0.&lt;/span&gt;
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;line_id&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;line_ids&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="n"&gt;line&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;train_set&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;line_id&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+        &lt;span class="n"&gt;chrf&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;sentence_chrf&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;line&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;generated&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;min_len&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;max_len&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;beta&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mf"&gt;1.&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                             &lt;span class="n"&gt;ignore_whitespace&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;False&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+        &lt;span class="n"&gt;chrf_total&lt;/span&gt; &lt;span class="o"&gt;+=&lt;/span&gt; &lt;span class="n"&gt;chrf&lt;/span&gt;
+
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;chrf_total&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="n"&gt;num_lines&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Finally, here's the key to reinforcement learning: in order to encourage positive behavior, you optimize the LSTM RNN to maximize the log likelihood, but you scale this value by the reward you just calculated. It's like a self-reinforcement loop, but this only happens when the reward is large. If the reward is large, the network is adjusted so that it will repeat the similar behavior next time around. If it's small, little adjustment happens. George the monkey has little idea what he did right or wrong, but because he gets some bananas, he'll just try to increase the probability of all the actions he just took. This is called the credit assignment problem in reinforcement learning.&lt;/p&gt;
+&lt;p&gt;This is equivalent to using the negative log likelihood scaled by the reward as the loss function:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;loss = -1. * reward * log_likelihood
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The following is the simplified training step (one epoch) using this loss function:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;zero_grad&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+&lt;span class="n"&gt;log_likelihoods&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[]&lt;/span&gt;
+&lt;span class="n"&gt;rewards&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[]&lt;/span&gt;
+
+&lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;_&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;range&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;BATCH_SIZE&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;words&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;log_likelihood&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;generate&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;max_len&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;60&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;reward&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;calculate_reward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;join&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;words&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="n"&gt;train_set&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="n"&gt;log_likelihoods&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;append&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;log_likelihood&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;rewards&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;append&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;reward&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="n"&gt;baseline&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;rewards&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="n"&gt;BATCH_SIZE&lt;/span&gt;
+&lt;span class="n"&gt;avr_loss&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mf"&gt;1.&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;reward&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt; &lt;span class="n"&gt;baseline&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;log_likelihood&lt;/span&gt;
+               &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;reward&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;log_likelihood&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;zip&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;rewards&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;log_likelihoods&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+&lt;span class="n"&gt;avr_loss&lt;/span&gt; &lt;span class="o"&gt;/=&lt;/span&gt; &lt;span class="n"&gt;num_instances&lt;/span&gt;
+
+&lt;span class="n"&gt;avr_loss&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;backward&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;span class="n"&gt;optimizer&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;step&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Note that I used a baseline (&lt;code&gt;baseline&lt;/code&gt; in the code) which is defined as the average of batch rewards and is subtracted from individual rewards. This is a common technique used to stabilize the RL training. You can see the entire script from &lt;a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/generation/rl.py"&gt;the Github repository from here&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;When you run this, at first "George" is generating utterly random texts as follows (the numbers next to each line is the reward): &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;epoch: 0, loss: 0.05585931986570358, avr_reward: 0.0017550825254028862
+    sNi!bnPTzG,lEzHwSwHNTEJkVmaOoypREZ!XaDsilXaPnpKmkFn.fWFMFtTE           0.002
+    aFExDxNjloFxIUwanN&amp;#39;s vhm,PoUIpUENIIPErN FDQf                           0.006
+    ICzmqKHaKrJGQvu!FAnpBksicaYJBLNOD,xdSE,TvELyPZIB!xGZmmAsXsgg           0.001
+    FtV oVGMxxCsksEmnvR?&amp;#39;WWTCESMYgbb,brSPrsJgUtuFzV.nUosofaix?Pw           0.004
+    yPqUIx!mh.yMjp.iglxmeHqwruNwxJFKIkqWbpzDjvvygHKUv&amp;#39;VReeCdcfV!           0.002
+    LbvWfPdpYd                                                             0.000
+    eXMUkjLOADX!kBXyz                                                      0.000
+    xC&amp;#39;,myEr&amp;#39;hMkfBfw.wiOl,GhHYbx&amp;#39;sdEnNggMnhzFTjWEXFqJnKRWF xP,mZ           0.002
+    W,TA,YhXDcmgNOHp,tZ GXE,e.ZaVBsTT.gcrc?ShnNePGirtQDqXC                 0.001
+    gqltaWgqTdAyR dv                                                       0.002
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;But at around epoch 20, he learns how to use whitespace to separate "words:"&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;epoch: 20, loss: 0.18826496601104736, avr_reward: 0.02756517726360421
+    JsmXi,r  H h s sni e  msnta ni   , ddo tre  so ii  . nrieo e           0.028
+    hISe wti en eroosea do o  s s ass d o aso  it n ,atse     d            0.036
+    qR?lJ  oatiio  ost    nisantltPrl o aisist   ?es  o ooue et            0.026
+    D,,fAoiedii  o  t  hso  e   d  ensihi  ee   dTe l ., oaq it            0.027
+    !&amp;#39;HUr  oninass em t et  . oo    l  srhk  sts   i e t el yhd            0.034
+    HTdTfo eu sdstr arh   a . ehh ir a hnensno hTk sonrrean h              0.026
+    OFezjlhgttsnt   sta ttsssd  hoes  t e t dd n    o  t s?iU Im           0.027
+    &amp;#39;CT.pQeh e .aona  o  tdi  nshteeo t es    n s heh t  dl   hh           0.028
+    KZ bZebilstnt o  o do iteoth sqdoro  s s    i ynd yt   de he           0.036
+    Ab!V trto  ntdhtso  er   ryni   nteeh  si dte  a g h   does            0.026
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;At epoch 100, the distribution of characters looks a lot like that of real English:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;epoch: 100, loss: 0.00019525864627212286, avr_reward: 0.0367961233153457
+    il e n tih  taah  tti  h sat toe e eeea eetr s saihhao tnrrt           0.029
+    .oea ttrhee rn erit t  do s  th tstat hohrersr   s te   ns             0.045
+    tiohoereeae  r thant sae  hs   e r thht t ttr a   e tt h   t           0.037
+    ZV trs ahntr t e  tn r e  atoa ne he shts rdrh    oe na t  e           0.034
+     uneh h  s ttet hs tto  ttort thest    et s snte rr e    edt           0.035
+    !eaae  iarsns sh  etd tr  neitehn neh  ohest  eoasstn os  o            0.032
+    pYaath s a t a  hhthentst he h  ratanat e he o ttt n tseh oa           0.040
+    Fosrr nieseaht   a eeen asn  e  t e hteat rs r  tahe t hethr           0.036
+    nnsee a  td oh ithtese ts tta t eh noo ahea aarhn hia oett n           0.040
+    fhthaaa t ttt an d ohs as a hs eeottiaahttaen  tethss t nees           0.035
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;At epoch 499 (the final epoch), many words look a lot like real English ones:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;epoch: 499, loss: -0.002016159240156412, avr_reward: 0.06706022209882276
+    o it s the on the, ther eo there to and to it is to anm then           0.066
+    l me here the o, is in mere, there s as tor at se s, on io t           0.072
+    h to here t ther iand mer ans ot ind as the ther to as ind t           0.069
+    an the at or in there or ho and ther me then so s the on the           0.074
+    n no at the ato herere  nd, is ato is tot the hor at there t           0.058
+    , is the in tot it ther me on to there the s, ind s, atd at            0.071
+    ereat t tor to her there is to here as to at to and there in           0.064
+    o ann or there at is the ond ind the ot there therer and and           0.072
+     se mor, tor ther the mer the ine and as it on, to ther ler            0.070
+    ho s tor and ind an ns and the the s there on se ther hen, o           0.069
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;This is not a bad result for such a short and simple program, although the generated text is far from that of Shakespeare. Under this environment and the definition of rewards, the best strategy for George to maximize the expected reward is to generate a lot of common English words, such as "the" and "and" and "is." But this does not guarantee that the generated text looks like real English. &lt;/p&gt;
+&lt;p&gt;This is also a common phenomenon when using ML (maximum likelihood) for optimization. Such models tend to produce something close to the "average" that is not interesting nor realistic. &lt;/p&gt;
+&lt;h2&gt;SeqGAN — using Generative Adversarial Network (GAN)&lt;/h2&gt;
+&lt;p&gt;Maybe the way we defined the reward was not right. We should reward pieces of text that look like real English, not just "average" ones. But how should we go about doing this? How would we determine if a given piece of text looks like real English?&lt;/p&gt;
+&lt;p&gt;Easy—use machine learning! &lt;/p&gt;
+&lt;p&gt;The concept here is quite simple. Instead of calculating the reward using some heuristics, have another machine learning model do it. This is like having another monkey (let's call her Doxie) do "supervision" on what George has produced. George generates text, while Doxie classifies it (or discriminates it), so they are called Generator (G) and Discriminator (D), respectively.&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Doxie the discriminator&lt;/em&gt;'s job is to receive texts from real Shakespeare's work (&lt;code&gt;real&lt;/code&gt; instances) and also from George's (&lt;code&gt;fake&lt;/code&gt; instances), and to tell the two apart. If she's successful in discriminating these two classes of text, she's given some rewards—bananas. So she gets better and better at this.&lt;/p&gt;
+&lt;p&gt;On the other hand, you reward &lt;em&gt;George the generator&lt;/em&gt; based on how successful he was in making Doxie believe what he produced is real Shakespeare's work. How many bananas he gets is therefore how much Doxie thinks George's work is Shakespeare's. So he also gets better and better at this. &lt;/p&gt;
+&lt;p&gt;This is the basic idea of GANs (Generative Adversarial Networks). Notice these two monkeys are in an adversarial relationship. One's interest is negatively associated with the other's. These two models compete with each other and get better and better at their own jobs. As a result, we expect the generator gets better and better at generating realistic text. See the following figure for an illustration.&lt;/p&gt;
+&lt;figure style="display: block; text-align: center;"&gt;
+    &lt;img src="images/seqgan.png" style="width: 100%;"/&gt;
+    &lt;figcaption&gt;Text generation using SeqGAN&lt;/figcaption&gt;
+&lt;/figure&gt;
+
+&lt;p&gt;Also notice that we have made little change to George the Generator. We still train him using bananas and reinforcement learning. On the other hand, Dixie the discriminator is trained using the usual supervised training paradigm, because we know which piece of text is real or fake. This is the core idea of SeqGAN, a GAN model for training sequence generation. &lt;/p&gt;
+&lt;p&gt;The SeqGAN algorithm described in &lt;a href="https://arxiv.org/abs/1609.05473"&gt;the original paper&lt;/a&gt; does more than this, for example, using MC search to estimate the expected reward for intermediate states and actions. What I describe in the following is a simplified version of the algorithm, where only complete sequences get rewards and used for updates.&lt;/p&gt;
+&lt;h2&gt;Implementing SeqGAN&lt;/h2&gt;
+&lt;p&gt;First, let's implement the discriminator (D). As mentioned above, its job is simply to classify real texts from fake ones, and you can use your favorite text classification model, as long as they produce probabilities. Following the paper, I implemented D using a CNN (convolutional neural network) using AllenNLP as follows:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Discriminator&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Model&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="fm"&gt;__init__&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                 &lt;span class="n"&gt;embedder&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;TextFieldEmbedder&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                 &lt;span class="n"&gt;embedding_size&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="nb"&gt;int&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                 &lt;span class="n"&gt;num_filters&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="nb"&gt;int&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                 &lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;Vocabulary&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;-&amp;gt;&lt;/span&gt; &lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="nb"&gt;super&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="fm"&gt;__init__&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;embedder&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;embedder&lt;/span&gt;
+
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;encoder&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;CnnEncoder&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;embedding_size&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;num_filters&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;num_filters&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;linear&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Linear&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;in_features&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;encoder&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_output_dim&lt;/span&gt;&lt;span class="p"&gt;(),&lt;/span&gt;
+                                      &lt;span class="n"&gt;out_features&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_vocab_size&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;labels&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+
+        &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;loss_function&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;nn&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;CrossEntropyLoss&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;forward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                &lt;span class="n"&gt;tokens&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;Dict&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="nb"&gt;str&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Tensor&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt;
+                &lt;span class="n"&gt;label&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Tensor&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;-&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;Dict&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="nb"&gt;str&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;torch&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Tensor&lt;/span&gt;&lt;span class="p"&gt;]:&lt;/span&gt;
+        &lt;span class="n"&gt;mask&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;get_text_field_mask&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;tokens&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+        &lt;span class="n"&gt;embeddings&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;embedder&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;tokens&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;encoder_out&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;encoder&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;embeddings&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;mask&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;logits&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;linear&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;encoder_out&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+        &lt;span class="n"&gt;output&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;logits&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;logits&lt;/span&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+        &lt;span class="n"&gt;output&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;loss&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;loss_function&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;logits&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;label&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;output&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;In order to calculate the reward, you simply run this discriminator model on an instance and return the probability for the &lt;code&gt;real&lt;/code&gt; class, as in:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;get_reward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;instance&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;Instance&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+               &lt;span class="n"&gt;discriminator&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;Discriminator&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+               &lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="n"&gt;Vocabulary&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;-&amp;gt;&lt;/span&gt; &lt;span class="nb"&gt;float&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+
+    &lt;span class="n"&gt;logits&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;discriminator&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;forward_on_instance&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;instance&lt;/span&gt;&lt;span class="p"&gt;)[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;logits&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+    &lt;span class="n"&gt;probs&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;exp&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;logits&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="nb"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;exp&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;logits&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;  &lt;span class="c1"&gt;# softmax&lt;/span&gt;
+
+    &lt;span class="n"&gt;real_label_id&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_token_index&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;real&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;labels&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;probs&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;real_label_id&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Finally, the simplified training step (one epoch) looks like this:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# train generator&lt;/span&gt;
+&lt;span class="n"&gt;generator&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;zero_grad&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+&lt;span class="n"&gt;instances&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;get_generator_batch&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;
+    &lt;span class="n"&gt;generator&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;token_indexers&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;args&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;batch_size&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="n"&gt;log_likelihoods&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[]&lt;/span&gt;
+&lt;span class="n"&gt;rewards&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[]&lt;/span&gt;
+
+&lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;instance&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;log_likelihood&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;instances&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="n"&gt;reward&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;get_reward&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;instance&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;discriminator&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;rewards&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;append&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;reward&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;log_likelihoods&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;append&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;log_likelihood&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="n"&gt;baseline&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;rewards&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="nb"&gt;len&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;instances&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;avr_loss&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mf"&gt;1.&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;reward&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt; &lt;span class="n"&gt;baseline&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;log_likelihood&lt;/span&gt;
+               &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;reward&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;log_likelihood&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;zip&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;rewards&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;log_likelihoods&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+&lt;span class="n"&gt;avr_loss&lt;/span&gt; &lt;span class="o"&gt;/=&lt;/span&gt; &lt;span class="nb"&gt;len&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;instances&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="n"&gt;avr_loss&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;backward&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;span class="n"&gt;generator_optim&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;step&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+&lt;span class="c1"&gt;# train discriminator&lt;/span&gt;
+&lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;d_step&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;range&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;args&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;d_steps&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;instances&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;get_discriminator_batch&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;
+        &lt;span class="n"&gt;generator&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;train_set&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;token_indexers&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;args&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;batch_size&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="n"&gt;iterator&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;BasicIterator&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;batch_size&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;args&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;batch_size&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;iterator&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;index_with&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;vocab&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="n"&gt;trainer&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Trainer&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;model&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;discriminator&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                      &lt;span class="n"&gt;optimizer&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;discriminator_optim&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                      &lt;span class="n"&gt;iterator&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;iterator&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                      &lt;span class="n"&gt;train_dataset&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;instances&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                      &lt;span class="n"&gt;num_epochs&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;args&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;d_epochs&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;trainer&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;train&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;The first half of this code looks almost exactly the same as the one above for RL, but with different rewards. The second half of this code runs the training loop for the discriminator for &lt;code&gt;d_steps&lt;/code&gt; times. According to the original paper, this improves the discriminator and stabilizes the SeqGAN training. You can see &lt;a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/generation/seqgan.py"&gt;the full code from here&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;When I ran this, George the Generator was generating something like this at epoch 0. Note that the generated samples are not as bad as the ones from the RL experiment at epoch 0. This is because I pre-trained the generator using maximum likelihood based on the algorithm described in the paper: &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;epoch: 0, loss: 3.657949447631836, avr_reward: 0.3042039595849708
+    Yank meoe.                                                             0.053
+    Ke inrdhas shisd?                                                      0.088
+    Fhes ar ha to coalherses wifat, Hhiaw rothel-                          0.388
+    fo thiero Hord                                                         0.230
+    Out ruut highanp                                                       0.284
+    Wome Flwipe nith wimadt &amp;#39;ne Thor? Pubparref.                           0.495
+    Tham. rarteas gop Kaleen it, pintut ne roy fag oong? pimnt ane&amp;#39;bn      0.459
+    gaver I fhe llom.                                                      0.617
+    seos the sevge iind,                                                   0.101
+    at. Ewo ue Fpot Qhwled fo mauut lame!&amp;#39;nn alp. iof lov&amp;#39;d&amp;#39;to             0.675
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Note that the quality of what he produces fluctuates significantly from epochs to epochs.  &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;epoch: 20, loss: -0.2615254521369934, avr_reward: 0.09727548112901777
+    T,n, answ? B?,,,,                                                      0.179
+    HofsanhrkangharhroF&amp;#39;angas!,, fharimzade                                0.038
+    narsangvraloreipTourtlr hrhoun,                                        0.329
+    ,e wan! Pygo heeO Ypawhr, PoswororisbagLaa,rorsagha, &amp;#39;gy,rgirwinh      0.077
+    Qnergua,,,yatighichanouganigolfrar, awhy oureI,                        0.193
+    ainTonwoura, givcososhy,                                               0.032
+    EEsit his,,areougharasrar                                              0.090
+    Laued, Nawheny ioriworeryzay fh henpho?w&amp;#39;rywowosdisen, Aftrhonwin      0.041
+    yrWisawsawinonghacrurparhashiande,                                     0.208
+    ro mer,y,,,                                                            0.038
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;At around epoch 50, he seems to have almost forgotten how to type whitespaces:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;epoch: 51, loss: -0.29897576570510864, avr_reward: 0.11309156971025479
+    KmeeoreeseolleeVthimeomeumeeephadtoumhesadenamerimlrouseele omath      0.037
+    gape mftonqouleshewilooche omo aeneeth PamOSowCee e uledogoveocee      0.038
+    Hiphepulesloe mocelume eefewhityomathpeiue pelt oulheCeee iolimet      0.044
+    Gpury ceutaceekteleepou@@UNKNOWN@@opeereeeeyoienetheet oulbopitible hosopow 0.063
+    Fobeokocoumshepopeetherithee couethoneuheogusopourecomppfike oume      0.033
+    hooule Sowe houdoreonouniekime uohaao oNichithethplethiwecetfeceo      0.036
+    AiteowenlemepoeTeoWhomoe outoutI.khe uipOutedceyesTome lost orore      0.034
+    I, Ioset ometulise mowrenoditrouOtheme ket te homireSheaeethesipo      0.044
+    liroke bosoomoe oxuwtuaudoamve heleI outgTokielari ouamermlisaime      0.091
+    antei go namavefme etXixeesoe oomuvelonam horitopoekomsoousemosey      0.072
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;After about 100 epochs, the training stabilizes a bit:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;epoch: 105, loss: -0.12946881353855133, avr_reward: 0.15411285912377126
+    the conf sinthiss the costosRar.t heisdes, Lould, thit                 0.172
+    Vosed soonne jet, soH th&amp;#39;y. me thesg. cetthet pay thtooctht me ha      0.128
+    Qfe bot at thothe Oens tos, tard, ame betkd chentasd thy haf thet      0.192
+    em thesstecat und thed mowe.ttertof thinsd wam iftet be head and       0.082
+    med, lo, AeNtbht perthel the se, moVths gan? oustite tap,y. at..       0.054
+    ie motcy the as cot wongtthosre theb cothet nut housd be we cesth      0.258
+    thelle do porycWat toree&amp;#39;g thf he bit be beruthe bede he con, che      0.866
+    thets che centetthercye bee the mut phet horos soune cond mthesth      0.070
+    the Pesist&amp;#39;the nentough watust oud he Ie fithannnthitey Ged he co      0.050
+    sdime Rett be the fes he,rothethe se we wenthe sf than hepsithl i      0.211
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Here are some more cherry-picked interesting-looking examples generated by SeqGAN:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;he the thoutesthe whesthey ofeevesthe peesthare.
+Ass he min, whe he the Onthe O se of mal. antle me Dite ghet ob t
+hest he goute, anss henog ye the bocCank&amp;#39;de then. esde thes that,
+The tot thensee hasy hfgrre te owd, worty ibe the sofed and be pm
+he the he chasf coas se ke r in, fors to ased bif the &amp;#39;fy an, se
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;These sentences still do not make any sense and look nothing like Shakespeare, but the distribution of the characters and also the lengths of the words is pretty close to English. Indeed, the "invented" words by George actually do look and sound like real English words: "whesthey," "antle," "goute," "hasy," etc. These sentences read almost like &lt;a href="https://en.wikipedia.org/wiki/Jabberwocky"&gt;the Jabberwocky poem&lt;/a&gt; from Through the Looking Glass.&lt;/p&gt;
+&lt;p&gt;I haven't run full parameter search for this, but my experience with (this simplified) SeqGAN is it is extremely brittle and difficult to train. It is widely known that GANs are tricky to train, but SeqGAN is even more so. There is &lt;a href="https://github.com/suragnair/seqGAN"&gt;a nice collection of tips when training SeqGAN by Surag Nair&lt;/a&gt;. According to this, "Stability is extremely sensitive to almost every parameter :/" and I fully agree!&lt;/p&gt;
+&lt;p&gt;One trick I found useful to stabilize SeqGAN was to combine the RL reward heuristics I used for the first half of this post with the GAN objective. People also suggest combining the maximum likelihood objective with GAN's (MIXER by Ranzato et al. 2016). There's a lot more to experiment! &lt;/p&gt;
+&lt;p&gt;That's it for now. Most of the progress of this post is made during my mini-batch week at &lt;a href="https://www.recurse.com/"&gt;the Recurse Center&lt;/a&gt;. I'm really grateful for the people there for running such a wonderful program. &lt;/p&gt;</content><category term="Text Generation"></category><category term="RL"></category><category term="SeqGAN"></category><category term="AllenNLP"></category></entry><entry><title>A Gentle Introduction to Skip-gram (word2vec) Model — AllenNLP ver.</title><link href="http://www.realworldnlpbook.com/blog/gentle-introduction-to-skipgram-word2vec-model-allennlp-ver.html" rel="alternate"></link><published>2019-02-02T00:00:00-05:00</published><updated>2019-02-02T00:00:00-05:00</updated><author><name>Masato Hagiwara</name></author><id>tag:www.realworldnlpbook.com,2019-02-02:/blog/gentle-introduction-to-skipgram-word2vec-model-allennlp-ver.html</id><summary type="html">&lt;p&gt;The Skip-gram model (so called "word2vec") is one of the most important concepts in modern NLP, yet many people simply use &lt;a href="https://code.google.com/archive/p/word2vec/"&gt;its implementation&lt;/a&gt; and/or pre-trained embeddings, and few people fully understand how the model is actually built. In this article, I'll cover:&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;What the Skip-gram model is&lt;/li&gt;
 &lt;li&gt;How to …&lt;/li&gt;&lt;/ul&gt;</summary><content type="html">&lt;p&gt;The Skip-gram model (so called "word2vec") is one of the most important concepts in modern NLP, yet many people simply use &lt;a href="https://code.google.com/archive/p/word2vec/"&gt;its implementation&lt;/a&gt; and/or pre-trained embeddings, and few people fully understand how the model is actually built. In this article, I'll cover:&lt;/p&gt;
