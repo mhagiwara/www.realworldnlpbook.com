@@ -63,6 +63,8 @@ The universal dependencies datasets are in the [CONLL-U](http://universaldepende
 
 ## Training a Universal POS Tagger using AllenNLP
 
+NOTE: You can try running the script yourself on Google Colab, a free, online Jupyter notebook environment by following [this link](https://colab.research.google.com/github/mhagiwara/realworldnlp/blob/master/examples/pos/pos_tagger.ipynb).
+
 First, let's train a POS tagger using AllenNLP in a standard way. It is very easy to read universal dependencies files using AllenNLP. The framework already implements `UniversalDependenciesDatasetReader`, which takes care of reading dataset files in the CONLL-U format:
 
 ```python
@@ -111,9 +113,9 @@ The rest of the model is almost the same as the model in the AllenNLP tutorial, 
 	<figcaption>Figure: RNN-based Universal POS Tagger</figcaption>
 </figure>
 
-The second change is less important—you need to implement a predictor  if you'd like to check if the model is working as expected. I'm not listing the entire code for the predictor here. If you are interested, you can [see it from here](https://github.com/mhagiwara/realworldnlp/blob/master/realworldnlp/predictors.py#L27).
+The second change is less important—you need to implement a predictor  if you'd like to check if the model is working as expected. I'm not listing the entire code for the predictor here. If you are interested, you can [see it from here](https://github.com/mhagiwara/realworldnlp/blob/master/realworldnlp/predictors.py#L28).
 
-When you run the [training script](https://github.com/mhagiwara/realworldnlp/blob/master/examples/pos/pos_tagger.py) for 10 epochs, the metrics should look like this: 
+When you run the [training script](https://colab.research.google.com/github/mhagiwara/realworldnlp/blob/master/examples/pos/pos_tagger.ipynb) for 10 epochs, the metrics should look like this: 
 
 ```text
                      Training |  Validation
@@ -351,7 +353,7 @@ That's it! Thank you for reading this article. Even though the example we used h
 
 Finally, here is the list of scripts that I used for this article. Enjoy!
 
-* [Training the POS tagger (AllenNLP version)](https://github.com/mhagiwara/realworldnlp/blob/master/examples/pos/pos_tagger.py)
+* [Training the POS tagger (AllenNLP version), on Google Colab](https://colab.research.google.com/github/mhagiwara/realworldnlp/blob/master/examples/pos/pos_tagger.ipynb)
 * [Training the POS tagger and exporting it as the ONNX format](https://github.com/mhagiwara/realworldnlp/blob/master/examples/pos/train_onnx_tagger.py)
 * [Reading the ONNX model and running it on Caffe2](https://github.com/mhagiwara/realworldnlp/blob/master/examples/pos/run_onnx_tagger.caffe2.py)
 * [Reading the ONNX model and running it on TensorFlow](https://github.com/mhagiwara/realworldnlp/blob/master/examples/pos/run_onnx_tagger.tf.py)

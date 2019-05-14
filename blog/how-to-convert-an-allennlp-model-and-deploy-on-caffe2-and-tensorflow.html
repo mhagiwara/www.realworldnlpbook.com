@@ -167,6 +167,7 @@
 
 <p>The universal dependencies datasets are in the <a href="http://universaldependencies.org/format.html">CONLL-U</a> format. Its details are out of the scope of this article, but you can see universal POS tags in the fourth column (<code>PROPN</code>, <code>PUNCT</code>, <code>PROPN</code>, <code>PUNCT</code>, <code>ADJ</code>, ...). The corpus also has a lot of other information, including morphological tags and dependency tags, but we are not going to use them here.</p>
 <h2>Training a Universal POS Tagger using AllenNLP</h2>
+<p>NOTE: You can try running the script yourself on Google Colab, a free, online Jupyter notebook environment by following <a href="https://colab.research.google.com/github/mhagiwara/realworldnlp/blob/master/examples/pos/pos_tagger.ipynb">this link</a>.</p>
 <p>First, let's train a POS tagger using AllenNLP in a standard way. It is very easy to read universal dependencies files using AllenNLP. The framework already implements <code>UniversalDependenciesDatasetReader</code>, which takes care of reading dataset files in the CONLL-U format:</p>
 <div class="highlight"><pre><span></span><span class="n">reader</span> <span class="o">=</span> <span class="n">UniversalDependenciesDatasetReader</span><span class="p">()</span>
 <span class="n">train_dataset</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;data/ud-treebanks-v2.3/UD_English-EWT/en_ewt-ud-train.conllu&#39;</span><span class="p">)</span>
@@ -211,8 +212,8 @@
     <figcaption>Figure: RNN-based Universal POS Tagger</figcaption>
 </figure>
 
-<p>The second change is less important—you need to implement a predictor  if you'd like to check if the model is working as expected. I'm not listing the entire code for the predictor here. If you are interested, you can <a href="https://github.com/mhagiwara/realworldnlp/blob/master/realworldnlp/predictors.py#L27">see it from here</a>.</p>
-<p>When you run the <a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/pos/pos_tagger.py">training script</a> for 10 epochs, the metrics should look like this: </p>
+<p>The second change is less important—you need to implement a predictor  if you'd like to check if the model is working as expected. I'm not listing the entire code for the predictor here. If you are interested, you can <a href="https://github.com/mhagiwara/realworldnlp/blob/master/realworldnlp/predictors.py#L28">see it from here</a>.</p>
+<p>When you run the <a href="https://colab.research.google.com/github/mhagiwara/realworldnlp/blob/master/examples/pos/pos_tagger.ipynb">training script</a> for 10 epochs, the metrics should look like this: </p>
 <div class="highlight"><pre><span></span>                     Training |  Validation
    accuracy      |     0.962  |     0.884
    loss          |     0.096  |     0.494
@@ -423,7 +424,7 @@
 <p>That's it! Thank you for reading this article. Even though the example we used here is not complex, LSTM is such an important component in modern NLP that you should be able to convert a wide range of NLP models in a similar way. If you are feeling ambitious, you can try converting a Seq2Seq model to ONNX, which should be possible as long as you decompose the model into pure PyTorch components and you are willing to implement the dynamic control flow (i.e., decoding) manually. I'm looking forward to seeing more examples.  </p>
 <p>Finally, here is the list of scripts that I used for this article. Enjoy!</p>
 <ul>
-<li><a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/pos/pos_tagger.py">Training the POS tagger (AllenNLP version)</a></li>
+<li><a href="https://colab.research.google.com/github/mhagiwara/realworldnlp/blob/master/examples/pos/pos_tagger.ipynb">Training the POS tagger (AllenNLP version), on Google Colab</a></li>
 <li><a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/pos/train_onnx_tagger.py">Training the POS tagger and exporting it as the ONNX format</a></li>
 <li><a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/pos/run_onnx_tagger.caffe2.py">Reading the ONNX model and running it on Caffe2</a></li>
 <li><a href="https://github.com/mhagiwara/realworldnlp/blob/master/examples/pos/run_onnx_tagger.tf.py">Reading the ONNX model and running it on TensorFlow</a></li>
