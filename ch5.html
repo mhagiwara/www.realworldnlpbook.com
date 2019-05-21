@@ -1,0 +1,55 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-175204-17"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-175204-17');
+    </script>
+
+    <script>
+
+        function runRedirects() {
+            var url = window.location.href;
+            if (url.endsWith('#pos-nb')) {
+                window.location.replace('https://colab.research.google.com/github/mhagiwara/realworldnlp/blob/master/examples/pos/pos_tagger.ipynb');
+            } else if (url.endsWith('#ewt')) {
+                window.location.replace('https://github.com/UniversalDependencies/UD_English-EWT/blob/master/README.md');
+            } else if (url.endsWith('#ewt-data')) {
+                window.location.replace('https://lindat.mff.cuni.cz/repository/xmlui/handle/11234/1-2895');
+            } else if (url.endsWith('#pos-sota')) {
+                window.location.replace('https://aclweb.org/aclwiki/POS_Tagging_(State_of_the_art)');
+            } else if (url.endsWith('#upos-predictor')) {
+                window.location.replace('https://github.com/mhagiwara/realworldnlp/blob/master/realworldnlp/predictors.py#L29');
+            } else if (url.endsWith('#nmt-paper')) {
+                window.location.replace('https://arxiv.org/abs/1611.04558');
+            } else if (url.endsWith('#ner-nb')) {
+                window.location.replace('https://colab.research.google.com/github/mhagiwara/realworldnlp/blob/master/examples/ner/ner.ipynb');
+            } else if (url.endsWith('#ner-data')) {
+                window.location.replace('https://www.kaggle.com/abhinavwalia95/entity-annotated-corpus');
+            } else if (url.endsWith('#ner-reader')) {
+                window.location.replace('https://colab.research.google.com/github/mhagiwara/realworldnlp/blob/master/examples/ner/ner.ipynb#scrollTo=KvIIVgAtSn57');
+            } else if (url.endsWith('#lm-nb')) {
+                window.location.replace('https://colab.research.google.com/github/mhagiwara/realworldnlp/blob/master/examples/generation/lm.ipynb');
+            }
+        }
+
+        window.addEventListener("hashchange", function() {
+            runRedirects();
+        });
+
+        runRedirects();
+    </script>
+    <title>Real-World Natural Language Processing - Chapter 5 Resources</title>
+</head>
+<body>
+    <h1>Real-World Natural Language Processing — Chapter 5 Resources</h1>
+
+    <hr/>
+</body>
+</html>
