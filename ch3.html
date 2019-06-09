@@ -18,6 +18,10 @@
             var url = window.location.href;
             if (url.endsWith('#tokenization')) {
                 window.location.replace('https://colab.research.google.com/github/mhagiwara/realworldnlp/blob/master/examples/tokenization.ipynb');
+            } else if (url.endsWith('#word2vec')) {
+                window.location.replace('https://github.com/mhagiwara/realworldnlp/blob/master/examples/embeddings/word2vec.py');
+            } else if (url.endsWith('#word2vec-nb')) {
+                window.location.replace('https://colab.research.google.com/github/mhagiwara/realworldnlp/blob/master/examples/embeddings/word2vec.ipynb');
             }
         }
 
