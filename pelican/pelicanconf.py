@@ -66,9 +66,9 @@ AUTHOR_FEED_ATOM = None
 AUTHOR_FEED_RSS = None
 
 # Blogroll
-LINKS = (('Real-World NLP Book', 'http://www.realworldnlpbook.com/'),
-         ('About the Author', 'http://masatohagiwara.net/'),
-         ('Manning Publications', 'https://www.manning.com/'),)
+LINKS = (('Home', 'http://www.realworldnlpbook.com/'),
+         ('Real-World NLP Book', 'https://www.manning.com/books/real-world-natural-language-processing'),
+         ('About the Author', 'http://masatohagiwara.net/'),)
 
 
 # Social widget
