@@ -97,6 +97,12 @@
 
 
   <div>
+    <blockquote>
+      <figure style="display: block; text-align: center;">
+        <a href="https://www.manning.com/books/real-world-natural-language-processing"><img src="http://www.realworldnlpbook.com/blog/images/rwnlp-meap.png" style="width: 128px;"/></a>
+      </figure>
+      <p>This is a sample article from my book <a href="https://www.manning.com/books/real-world-natural-language-processing">"Real-World Natural Language Processing" (Manning Publications)</a>. If you are interested in learning more about NLP, check it out from the book link!</p>
+    </blockquote>
     <p>The Skip-gram model (so called "word2vec") is one of the most important concepts in modern NLP, yet many people simply use <a href="https://code.google.com/archive/p/word2vec/">its implementation</a> and/or pre-trained embeddings, and few people fully understand how the model is actually built. In this article, I'll cover:</p>
 <ul>
 <li>What the Skip-gram model is</li>
@@ -342,6 +348,12 @@ leg     arm     N       2.88
 <p>Word pairs such as "night" - "day" are given a low similarity because they are antonyms (words with opposite meanings). Other pairs, such as "leg" and "arm", are related, but also assigned low similarities. Only synonymous pairs ("student" - "pupil") are given higher similarities.</p>
 <p>The structure of this dataset is very convenient for us. As shown above, we already have word pairs and their estimated similarity values. All you need to do is to compare two sets of  similarities and calculate how they are related. We use a correlation coefficient (more specifically, <a href="https://en.wikipedia.org/wiki/Spearman%27s_rank_correlation_coefficient">Spearman's rank correlation coefficient</a>) for this.</p>
 <p>When I ran the training, I got a correlation coefficient of r = 0.202. For reference, according to <a href="https://aclweb.org/aclwiki/SimLex-999_(State_of_the_art)">the ACL Wiki page</a>, the state of the art for this dataset is around 0.5. I expect that our results will be higher if we use a larger dataset and a larger value for the embedding size. </p>
+    <blockquote>
+      <figure style="display: block; text-align: center;">
+        <a href="https://www.manning.com/books/real-world-natural-language-processing"><img src="http://www.realworldnlpbook.com/blog/images/rwnlp-meap.png" style="width: 128px;"/></a>
+      </figure>
+      <p>This is a sample article from my book <a href="https://www.manning.com/books/real-world-natural-language-processing">"Real-World Natural Language Processing" (Manning Publications)</a>. If you are interested in learning more about NLP, check it out from the book link!</p>
+    </blockquote>
   </div>
   <div class="tag-cloud">
     <p>
