@@ -1,0 +1,37 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-175204-17"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-175204-17');
+    </script>
+
+    <script>
+
+        function runRedirects() {
+            var url = window.location.href;
+            if (url.endsWith('#cnn-nb')) {
+                window.location.replace('https://colab.research.google.com/github/mhagiwara/realworldnlp/blob/master/examples/sentiment/sst_cnn_classifier.ipynb');
+            }
+        }
+
+        window.addEventListener("hashchange", function() {
+            runRedirects();
+        });
+
+        runRedirects();
+    </script>
+    <title>Real-World Natural Language Processing - Chapter 5 Resources</title>
+</head>
+<body>
+    <h1>Real-World Natural Language Processing — Chapter 5 Resources</h1>
+
+    <hr/>
+</body>
+</html>
