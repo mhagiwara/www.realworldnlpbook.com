@@ -2,7 +2,7 @@ Title: The Unreasonable Effectiveness of the Transformer Spell Checker
 Date: 2020-06-18 00:00
 Category: Spell Checker
 Tags: Transformer, fairseq
-Cover: images/monkey-pedestal.png
+Cover: images/xfspell.png
 slug: unreasonable-effectiveness-of-transformer-spell-checker
 
 <figure style="display: block; text-align: center;">
