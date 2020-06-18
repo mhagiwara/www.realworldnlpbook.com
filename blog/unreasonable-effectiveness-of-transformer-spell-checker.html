@@ -1,0 +1,341 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="HandheldFriendly" content="True" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="" />
+
+  <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro|Source+Sans+Pro:300,400,400i,700" rel="stylesheet">
+
+    <link rel="stylesheet" type="text/css" href="http://www.realworldnlpbook.com/blog/theme/stylesheet/style.min.css">
+
+  <link rel="stylesheet" type="text/css" href="http://www.realworldnlpbook.com/blog/theme/pygments/monokai.min.css">
+  <link rel="stylesheet" type="text/css" href="http://www.realworldnlpbook.com/blog/theme/font-awesome/css/font-awesome.min.css">
+
+
+    <link href="http://www.realworldnlpbook.com/blog/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Real-World Natural Language Processing Atom">
+
+
+
+<!-- Google Analytics -->
+<script type="text/javascript">
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-175204-17', 'auto');
+  ga('send', 'pageview');
+</script>
+<!-- End Google Analytics -->
+
+<meta name="author" content="Masato Hagiwara" />
+<meta name="description" content="xfspell — the Transformer Spell Checker NOTE: All the code and pre-trained model necessary for running this spell checker can be found in the xfspell repository. In the modern world, spell checkers are everywhere. Chances are your web browser is equipped with a spell checker which tells you when you make …" />
+<meta name="keywords" content="Transformer, fairseq">
+
+<meta property="og:site_name" content="Real-World Natural Language Processing"/>
+<meta property="og:title" content="The Unreasonable Effectiveness of the Transformer Spell Checker"/>
+<meta property="og:description" content="xfspell — the Transformer Spell Checker NOTE: All the code and pre-trained model necessary for running this spell checker can be found in the xfspell repository. In the modern world, spell checkers are everywhere. Chances are your web browser is equipped with a spell checker which tells you when you make …"/>
+<meta property="og:locale" content="en_US"/>
+<meta property="og:url" content="http://www.realworldnlpbook.com/blog/unreasonable-effectiveness-of-transformer-spell-checker.html"/>
+<meta property="og:type" content="article"/>
+<meta property="article:published_time" content="2020-06-18 00:00:00-04:00"/>
+<meta property="article:modified_time" content=""/>
+<meta property="article:author" content="http://www.realworldnlpbook.com/blog/author/masato-hagiwara.html">
+<meta property="article:section" content="Spell Checker"/>
+<meta property="article:tag" content="Transformer"/>
+<meta property="article:tag" content="fairseq"/>
+<meta property="og:image" content="http://www.realworldnlpbook.com/blog/images/monkey-pedestal.png">
+
+  <title>The Unreasonable Effectiveness of the Transformer Spell Checker &ndash; Real-World Natural Language Processing</title>
+
+</head>
+<body>
+  <aside>
+    <div>
+      <a href="http://www.realworldnlpbook.com/blog">
+        <img src="http://masatohagiwara.net/img/profile.jpg" alt="Real-World Natural Language Processing" title="Real-World Natural Language Processing">
+      </a>
+      <h1><a href="http://www.realworldnlpbook.com/blog">Real-World Natural Language Processing</a></h1>
+
+<p>NLP recipes and best practices <br/>from the Manning book "Real-World NLP"</p>
+      <nav>
+        <ul class="list">
+
+          <li><a href="http://www.realworldnlpbook.com/" target="_blank">Home</a></li>
+          <li><a href="https://www.manning.com/books/real-world-natural-language-processing" target="_blank">Real-World NLP Book</a></li>
+          <li><a href="http://masatohagiwara.net/" target="_blank">About the Author</a></li>
+        </ul>
+      </nav>
+
+      <ul class="social">
+        <li><a class="sc-envelope" href="mailto: hagisan@gmail.com" target="_blank"><i class="fa fa-envelope"></i></a></li>
+        <li><a class="sc-twitter" href="https://twitter.com/mhagiwara" target="_blank"><i class="fa fa-twitter"></i></a></li>
+        <li><a class="sc-github" href="https://github.com/mhagiwara/realworldnlp" target="_blank"><i class="fa fa-github"></i></a></li>
+      </ul>
+    </div>
+
+
+  </aside>
+  <main>
+
+
+<article class="single">
+  <header>
+      
+    <h1 id="unreasonable-effectiveness-of-transformer-spell-checker">The Unreasonable Effectiveness of the Transformer Spell Checker</h1>
+    <p>
+          Posted on Thu 18 June 2020 in <a href="http://www.realworldnlpbook.com/blog/category/spell-checker.html">Spell Checker</a>
+
+
+    </p>
+  </header>
+
+
+  <div>
+    <blockquote>
+      <figure style="display: block; text-align: center;">
+        <a href="https://www.manning.com/books/real-world-natural-language-processing"><img src="http://www.realworldnlpbook.com/blog/images/rwnlp-meap.png" style="width: 128px;"/></a>
+      </figure>
+      <p>This is a sample article from my book <a href="https://www.manning.com/books/real-world-natural-language-processing">"Real-World Natural Language Processing" (Manning Publications)</a>. If you are interested in learning more about NLP, check it out from the book link!</p>
+    </blockquote>
+    <figure style="display: block; text-align: center;">
+    <img src="images/xfspell.png" style="width: 40%;"/>
+    <figcaption>xfspell — the Transformer Spell Checker</figcaption>
+</figure>
+
+<p>NOTE: All the code and pre-trained model necessary for running this spell checker can be found in <a href="https://github.com/mhagiwara/xfspell">the xfspell repository</a>. </p>
+<p>In the modern world, spell checkers are everywhere. Chances are your web browser is equipped with a spell checker which tells you when you make a spelling mistake by underlining wrong words. Many word processors and editors also run spell checkers by default. Some applications (including Google Docs and Microsoft Word) even point out simple grammatical errors too. Ever wondered how they work? We'll learn how to formulate this as an NLP problem, prepare the dataset, train, and improve the model below. </p>
+<h2>Spell Correction as Machine Translation</h2>
+<p>Spell checkers receive a piece of text such as: "tisimptant too spll chck ths dcment," detect spelling and grammatical errors if any, and fix all errors: "It's important to spell check this document." How can you solve this task with NLP technologies? How can such systems be implemented? </p>
+<p>The simplest thing you could do is to tokenize the input text into words, and check if each word is in a dictionary. If it's not, you look for the closest valid word in the dictionary according to some measure such as the edit distance and replace with that word. You repeat this until there are no words left to fix. This word-by-word fixing algorithm is widely used by many spell checkers due to its simplicity.</p>
+<p>However, it has several issues. First, just like the first word in the example "tisimptant," how do you know which part of the sentence is actually a word? The default spell checker for my Microsoft Word, for example, indicates it's a misspell of "disputant," although it would be obvious to any English speakers that it is actually a misspell of two (or more) words. The fact that users can also misspell punctuation (including whitespace) makes everything very complicated. Second, just because some word is in a dictionary doesn't mean it's not an error. For example, the second word in the example, "too" is a misspell of "to," but both are valid words that are in any English dictionary. How can you tell if the former is wrong in this context? Third, all these decisions are made out of context. One of the spell checkers I tried shows "thus" as a candidate to replace "ths" in this example. However, from this context (before a noun) it is obvious that "this" is a more appropriate candidate, although both "this" and "thus" are one edit distance away from "ths," meaning they are equally valid options according to the edit distance. </p>
+<p>You would be able to solve some of these issues by adding some heuristic rules. For example, "too" is more likely a misspell of "to" before a verb, and "this" is more likely before a noun than "thus," etc. But this is obviously not scalable. Language is vast and full of exceptions. You cannot just keep writing such rules to deal with the full complexity of language. Even if you are able to write rules for such simple words, how would you tell that "tisimptant" is actually two words? Would you try to split this word at every possible position to see if split words resemble existing words? What if the input was in a language that is written without even whitespace, like Chinese and Japanese?</p>
+<p>At this point, you may realize this "split and fix" approach is going nowhere. Do spell checkers resemble any NLP tasks you have worked on before? Because they take a piece of text as the input and produce the fixed string, it'd be most straightforward if we solved this as a Seq2Seq task. In other words, it can be thought of as some sort of a machine translation system that translates noisy inputs with spelling/grammatical errors into clean, error-free outputs. You can regard these two sides as two different "languages" (or "dialects" of English).</p>
+<figure style="display: block; text-align: center;">
+    <img src="images/spell-checker.png" style="width: 70%;"/>
+    <figcaption>Spell checking as machine translation</figcaption>
+</figure>
+
+<p>We will use the Transformer as our main Seq2Seq model and <a href="https://github.com/pytorch/fairseq">fairseq</a> as our main library of choice. We won't cover the basics of the Transformer in this article, but if you are interested in learning more, <a href="https://www.manning.com/books/real-world-natural-language-processing">check out my book</a>—it has a detailed chapter on the Transformer, which will be published soon.</p>
+<p>At this point, you may be wondering where we are obtaining the dataset. This is often the most important (and the most difficult) part in solving real-world NLP problems. Fortunately, there's a public dataset we can use for this task. Let's dive in and start building a spell checker.</p>
+<h2>Training a Spell Checker</h2>
+<p>We will be using <a href="https://github.com/mhagiwara/github-typo-corpus">GitHub Typo Corpus</a> as the dataset to train a spell checker. The dataset, created by my collaborator and me, consists of hundreds of thousands of "typo" edits automatically harvested from GitHub. It is the largest dataset of spelling mistakes and their corrections to date, which makes it a perfect choice for training a spell checker.</p>
+<p>One decision we need to make before preparing the dataset and training a model is what to use as the atomic linguistic unit on which the model operates. Many NLP models use tokens as the smallest unit (that is, RNN/Transformer is fed a sequence of tokens), while a growing number of NLP models use word or sentence pieces as the basic units (I'm planning on dedicating one section of my book to this topic). What should we use as the smallest unit for spell correction? As with many other NLP models, using words as the input sounds like good "default" thing to do at first. However, as we've seen above, the concept of tokens is not well suited for spell correction—users can mess up with punctuation, which makes everything overly complex if you are dealing with tokens. More importantly, because NLP models need to operate on a fixed vocabulary, this would mean that the spell corrector vocabulary needs to include every single misspelling of every single word it encountered during the training. This would make it unnecessarily expensive to train and maintain such an NLP model.</p>
+<p>For these reasons, we will be using <em>characters</em> as the basic unit for our spell checker. Using characters has several advantages—this can keep the size of the vocabulary quite small (usually less than hundred for a language with a small set of alphabets such as English). You don't need to worry about bloating your vocabulary even with a noisy dataset full of typos, because typos are just different arrangements of characters. You can also treat punctuation marks (even whitespace) as one of the "alphabets" in the vocabulary. This makes the preprocessing step extremely easy, because you don't need any linguistic toolkit (such as tokenizers) for doing this.</p>
+<p>Note that using characters is not without disadvantages. One main issue is using them will increase the length of sequences, because you need to break everything up to characters. This makes the model large and slower to train.</p>
+<p>First, let's prepare the dataset for training a spell checker. All the necessary data and code for building a spell checker is included in <a href="https://github.com/mhagiwara/xfspell">the xfspell repository</a>. The tokenized and split datasets are located under <code>data/gtc</code> (as <code>train.tok.fr</code>, <code>train.tok.en</code>, <code>dev.tok.fr</code>, and <code>dev.tok.en</code>). The suffixes <code>en</code> and <code>fr</code> are a commonly used convention in machine translation—"fr" means "foreign language" (it used to mean "French") and "en" means English, because many MT research projects were originally (and still are) motivated by people wanting to translate some foreign language into English. Here, we are using "fr" and "en" to mean just "noisy text before spelling correction" and "clean text after spelling correction."</p>
+<figure style="display: block; text-align: center;">
+    <img src="images/gtc.png" style="width: 100%;"/>
+    <figcaption>Excerpt from GitHub Typo Corpus</figcaption>
+</figure>
+
+<p>The figure above shows an excerpt from the dataset for spelling correction created from GitHub Typo Corpus. Notice that text is segmented into individual characters, even whitespaces (replaced by "_"). Any characters outside common alphabets (upper and lower case letters, numbers, and some common punctuation marks) are replaced with "#." You can see that the dataset contains very diverse corrections, including simple typos (pubilc -&gt; public on line 670, HYML -&gt; HTML on line 672) and more trickier errors (mxnet as not -&gt; mxnet is not on line 681, 22th -&gt; 22nd on line 682), and even lines without any corrections (line 676). This looks like a good resource to use for training a spell checker.</p>
+<p>The first step for training a spell checker (or any other Seq2Seq models) is preprocess the datasets. Because the dataset is already split and formatted, all you need to do is run <code>fairseq-preprocess</code> to convert the datasets into a binary format:</p>
+<div class="highlight"><pre><span></span>fairseq-preprocess --source-lang fr --target-lang en <span class="se">\</span>
+    --trainpref data/gtc/train.tok <span class="se">\</span>
+    --validpref data/gtc/dev.tok <span class="se">\</span>
+    --destdir bin/gtc
+</pre></div>
+
+
+<p>Then you can start training your model right away:</p>
+<div class="highlight"><pre><span></span>fairseq-train <span class="se">\</span>
+    bin/gtc <span class="se">\</span>
+    --fp16 <span class="se">\</span>
+    --arch transformer <span class="se">\</span>
+    --encoder-layers <span class="m">6</span> --decoder-layers <span class="m">6</span> <span class="se">\</span>
+    --encoder-embed-dim <span class="m">1024</span> --decoder-embed-dim <span class="m">1024</span> <span class="se">\</span>
+    --encoder-ffn-embed-dim <span class="m">4096</span> --decoder-ffn-embed-dim <span class="m">4096</span> <span class="se">\</span>
+    --encoder-attention-heads <span class="m">16</span> --decoder-attention-heads <span class="m">16</span> <span class="se">\</span>
+    --share-decoder-input-output-embed <span class="se">\</span>
+    --optimizer adam --adam-betas <span class="s1">&#39;(0.9, 0.997)&#39;</span> --adam-eps 1e-09 --clip-norm <span class="m">25</span>.0 <span class="se">\</span>
+    --lr 1e-4 --lr-scheduler inverse_sqrt --warmup-updates <span class="m">16000</span> <span class="se">\</span>
+    --dropout <span class="m">0</span>.1 --attention-dropout <span class="m">0</span>.1 --activation-dropout <span class="m">0</span>.1 <span class="se">\</span>
+    --weight-decay <span class="m">0</span>.00025 <span class="se">\</span>
+    --criterion label_smoothed_cross_entropy --label-smoothing <span class="m">0</span>.2 <span class="se">\</span>
+    --max-tokens <span class="m">4096</span> <span class="se">\</span>
+    --save-dir models/gtc01 <span class="se">\</span>
+    --max-epoch <span class="m">40</span>
+</pre></div>
+
+
+<p>Note that this might not even run on your laptop. You really need GPUs to train the Transformer models. Also note that training can take hours even with GPU(s). </p>
+<p>You don't need to worry about most of the hyperparameters here—this is the set of parameters that worked fairly well for me, although some other combinations of parameters can work better. However, you may want to pay attention to some of the parameters related to the size of the model, namely:</p>
+<ul>
+<li>Number of layers (<code>--[encoder|decoder]-layers</code>)</li>
+<li>Embedding dimension of self-attention (<code>--[encoder|decoder]-embed-dim</code>)</li>
+<li>Embedding dimension of feed-forward layers (<code>--[encoder/decoder]-ffn-embed-dim</code>)</li>
+<li>Number of attention heads (<code>--[encoder|decoder]-attention-heads</code>)</li>
+</ul>
+<p>These parameters determine the capacity of the model. In general, the larger these parameters are, the larger capacity the model would have, although as the result the model also requires more data, time, and GPU resources to train. Another important parameter is <code>--max-tokens</code>, which specifies the number of tokens loaded onto a single batch. If you are experiencing out-of-memory errors on a GPU, try adjusting this parameter.</p>
+<p>After the training is finished, you can run the following command to make predictions using the trained model:</p>
+<div class="highlight"><pre><span></span><span class="nb">echo</span> <span class="s2">&quot;tisimptant too spll chck ths dcment.&quot;</span> <span class="se">\</span>
+    <span class="p">|</span> python src/tokenize.py <span class="se">\</span>
+    <span class="p">|</span> fairseq-interactive bin/gtc <span class="se">\</span>
+    --path models/gtc01/checkpoint_best.pt <span class="se">\</span>
+    --source-lang fr --target-lang en --beam <span class="m">10</span> <span class="se">\</span>
+    <span class="p">|</span> python src/format_fairseq_output.py
+</pre></div>
+
+
+<p>Because the <code>fairseq-interactive</code> interface can also take source text from the standard input, we are directly providing the text using the echo command. The Python script <code>src/format_fairseq_output.py</code>, as its name suggests, formats the output from <code>fairseq-interactive</code> and shows the predicted target text. When I ran this, I got:</p>
+<div class="highlight"><pre><span></span>tisimplement too spll chck ths dcment.
+</pre></div>
+
+
+<p>This is rather disappointing. The spell checker learned to somehow fix "imptant" to "implement," although it failed to correct any other words. I suspect there are a couple of reasons for this. The training data used, GitHub Typo Corpus, is heavily biased towards software-related language and corrections, which might have led to the wrong correction (imptant -&gt; implement). Also, the training data might have just been too small for the Transformer to be effective. How could we improve the model so that it can fix spellings more accurately? </p>
+<h2>Improving a Spell Checker</h2>
+<p>As we discussed above, one main reason why the spell checker is not working as expected might be because the model wasn't exposed to a more diverse, larger amount of misspellings during training. But as far as I know there are no such large datasets of diverse misspellings publicly available for training a general-domain spell checker. Then, how could we obtain more data for training a better spell checker?</p>
+<p>This is where we need to be creative. One idea here is to artificially generate noisy text from clean text. If you think of it, it is very difficult (especially for a machine learning model) to fix misspellings, while it is very easy to "corrupt" clean text to simulate how people make typos, even for a computer. For example, we can take some clean text (which is available from, for example, scraped web text almost indefinitely) and replace some letters at random. If you pair artificially-generated noisy text created this way with the original, clean text, this will effectively create a new, larger dataset on which you can train an even better spell checker!</p>
+<p>The remaining issue we need to address is how to "corrupt" clean text to generate realistic spelling errors that look like the ones made by humans. You can write a Python script that, for example, replaces, deletes, and/or swaps letters at random, although there is no guarantee that typos made this way are similar to those made by humans and the resulting artificial dataset provides useful insights for the Transformer model. How can we model the fact that, for example, humans are more likely to type "too" in place of "to" than we do "two?"</p>
+<p>This is starting to sound familiar again. We can use the data to simulate the typos! But how? This is where we need to be creative again—if you "flip" the direction of the original dataset we used to train the spell checker, you can observe how humans make typos. If you treat the clean text as the source language while the noisy text as the target and train a Seq2Seq model for that direction, you are effectively training a "spell corruptor"—a Seq2Seq model that inserts realistic looking spelling errors into clean text. See the following figure for an illustration.</p>
+<p><figure style="display: block; text-align: center;">
+    <img src="images/back-translation.png" style="width: 70%;"/>
+    <figcaption>Using back-translation to generate artificial noisy data</figcaption>
+</figure></p>
+<p>This technique of using the "inverse" of the original training data to artificially generate a large amount of data in the source language from a real corpus in the target language is called <em>back-translation</em> in the machine translation literature. It is a very common, popular technique to improve the quality of machine translation systems. If you are interested in learning more, check out some related papers (for example, <a href="https://arxiv.org/abs/1808.09381">Ednov et al. 2018</a>). As we'll show below, it is also very effective for improving the quality of spell checkers.</p>
+<p>You can easily train a spell corruptor just by swapping the source and the target languages. You can do this by supplying "en" (clean text) as the source language and "fr" (noisy text) as the target language when you run <code>fairseq-preprocess</code> as follows:</p>
+<div class="highlight"><pre><span></span>fairseq-preprocess --source-lang en --target-lang fr <span class="se">\</span>
+    --trainpref data/gtc/train.tok <span class="se">\</span>
+    --validpref data/gtc/dev.tok <span class="se">\</span>
+    --destdir bin/gtc-en2fr
+</pre></div>
+
+
+<p>We are not going over the training process again—you can use almost the same <code>fairseq-train</code> command to start the training. Just don't forget to specify a different directory for <code>--save-dir</code>. After you finish training, you can check whether the spelling corrupter can indeed corrupt the input text as expected:</p>
+<div class="highlight"><pre><span></span>$ <span class="nb">echo</span> <span class="s1">&#39;The quick brown fox jumps over the lazy dog.&#39;</span> <span class="p">|</span> python src/tokenize.py <span class="se">\ </span>
+    <span class="p">|</span> fairseq-interactive <span class="se">\</span>
+    bin/gtc-en2fr <span class="se">\</span>
+    --path models/gtc-en2fr/checkpoint_best.pt <span class="se">\</span>
+    --source-lang en --target-lang fr <span class="se">\</span>
+    --beam <span class="m">1</span> --sampling --sampling-topk <span class="m">10</span> <span class="se">\</span>
+    <span class="p">|</span> python src/format_fairseq_output.py
+The quink brown fox jumps ove-rthe lazy dog.
+</pre></div>
+
+
+<p>Note the extra options that I added above (<code>--beam 1 --sampling --sampling-topk 10</code>). It means that the <code>fairseq-interactive</code> command uses sampling (from top 10 tokens with largest probabilities) instead of beam search. When corrupting clean text, it is often better to use sampling instead of beam search. To recap, sampling picks the next token randomly according to the probability distribution after the softmax layer, while beam search tries to find the "best path" that maximizes the score of the output sequence. Although beam search can find better solutions when translating some text, we want noisy, more diverse output when corrupting clean text. Past research (Ednov et al. 2018) has also shown that sampling (instead of beam search) works better for augmenting data via back-translation.</p>
+<p>From here, the sky's the limit. You can collect as much clean text as you want, generate noisy text from it using the corruptor you just trained, and increase the size of the training data. There is no guarantee that the artificial errors look like the real ones made by humans, but this is not a big deal because 1) the source (noisy) side is only used for encoding and 2) the target (clean) side data is always “real” data written by humans, from which the Transformer can learn how to generate real text. The more text data you collect, the more confident the model will get about what error-free, real text looks like.</p>
+<p>I won't go over every step I took to increase the size of the data, but here's the summary of what I did and what you can also do (see <a href="https://github.com/mhagiwara/xfspell/blob/master/src/run_bt.sh">the bash script that contains everything I ran</a> if you are interested in reproducing). Collect as much clean and diverse text data from publicly available datasets, such as <a href="https://tatoeba.org/">Tatoeba</a> and <a href="https://dumps.wikimedia.org/">Wikipedia dumps</a>. My favorite way to do this is to use <a href="https://skylion007.github.io/OpenWebTextCorpus/">OpenWebTextCorpus</a>, an open source project to replicate the dataset on which GPT-2 was originally trained. It consists of a huge amount (40GB) of high-quality Web text crawled from all outbound links from Reddit. Because the entire dataset would take days, if not weeks, just to preprocess and run the corruptor on, you can take a subset (say, 1/1000th) and add it to the dataset. I took 1/100th of the dataset, preprocessed it, and ran the corruptor to obtain the noisy-clean parallel dataset. This 1/100th subset alone added more than 5 million pairs (in comparison, the original training set only contains ~240k pairs). Instead of training from scratch, you can download the pre-trained weights and <a href="https://github.com/mhagiwara/xfspell">try the spell checker from the repository</a>.</p>
+<p>The training took several days even on multiple GPUs, but when it's done, the result was very encouraging. Not only can it accurately fix spelling errors:</p>
+<div class="highlight"><pre><span></span>$ <span class="nb">echo</span> <span class="s2">&quot;tisimptant too spll chck ths dcment.&quot;</span> <span class="se">\</span>
+    <span class="p">|</span> python src/tokenize.py <span class="se">\</span>
+    <span class="p">|</span> fairseq-interactive <span class="se">\</span>
+    bin/gtc-bt512-owt1k-upper <span class="se">\</span>
+    --path models/bt05/checkpoint_best.pt <span class="se">\</span>
+    --source-lang fr --target-lang en --beam <span class="m">10</span> <span class="se">\</span>
+   <span class="p">|</span> python src/format_fairseq_output.py
+It<span class="err">&#39;</span>s important to spell check this document.
+</pre></div>
+
+
+<p>But the spell checker also appears to understand the grammar of English to some degree:</p>
+<div class="highlight"><pre><span></span>$ <span class="nb">echo</span> <span class="s2">&quot;The book wer about NLP.&quot;</span> <span class="p">|</span>
+    <span class="p">|</span> python src/tokenize.py <span class="se">\</span>
+    <span class="p">|</span> fairseq-interactive <span class="se">\</span>
+   ...
+The book was about NLP.
+
+$ <span class="nb">echo</span> <span class="s2">&quot;The books wer about NLP.&quot;</span> <span class="p">|</span>
+    <span class="p">|</span> python src/tokenize.py <span class="se">\</span>
+    <span class="p">|</span> fairseq-interactive <span class="se">\</span>
+   ...
+The books were about NLP.
+</pre></div>
+
+
+<p>This example alone may not prove that the model really understands the grammar (namely, using the correct verb depending on the number of the subject). It might just be learning some association between consecutive words, which can be achieved by any statistical NLP models, such as n-gram language models. However, even after you make the sentences more complicated, the spell checker shows amazing resilience:</p>
+<div class="highlight"><pre><span></span>$ <span class="nb">echo</span> <span class="s2">&quot;The book Tom and Jerry put on the yellow desk yesterday wer about NLP.&quot;</span> <span class="p">|</span>
+    <span class="p">|</span> python src/tokenize.py <span class="se">\</span>
+    <span class="p">|</span> fairseq-interactive <span class="se">\</span>
+   ...
+The book Tom and Jerry put on the yellow desk yesterday was about NLP.
+
+$ <span class="nb">echo</span> <span class="s2">&quot;The books Tom and Jerry put on the yellow desk yesterday wer about NLP.&quot;</span> <span class="p">|</span>
+    <span class="p">|</span> python src/tokenize.py <span class="se">\</span>
+    <span class="p">|</span> fairseq-interactive <span class="se">\</span>
+   ...
+The books Tom and Jerry put on the yellow desk yesterday were about NLP.
+</pre></div>
+
+
+<p>From these examples, it is clear that the model learned how to ignore irrelevant noun phrases (such as "Tom and Jerry" and "yellow desk") and focus on the noun ("book(s)") that determines the form of the verb ("was" versus "were"). We are more confident that it understands the basic sentence structure. All we did was collect a large amount of clean text and trained the Transformer model on it, combined with the original training data and the corruptor. Hopefully through these experiments you were able to feel how powerful the Transformer model can be!</p>
+<p>Finally, I ran some more quantitative analysis on the quality of the Transformer spell checker. I used <a href="https://ilexir.co.uk/datasets/index.html">the CLC FCE Dataset</a>, a corpus of English text written by ESOL learners and only extracted spelling mistakes. I ran <a href="http://aspell.net/">Aspell</a>, the Transformer model trained only on the GitHub Typo Corpus (GTC), and the full Transformer Spell Checker trained on 7m+ parallel pairs.   </p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Precision</th>
+<th>Recall</th>
+<th>F0.5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Aspell</td>
+<td>0.638</td>
+<td>0.706</td>
+<td>0.651</td>
+</tr>
+<tr>
+<td>Transformer (GTC)</td>
+<td>0.246</td>
+<td>0.384</td>
+<td>0.265</td>
+</tr>
+<tr>
+<td>Transformer (full)</td>
+<td>0.655</td>
+<td>0.836</td>
+<td>0.684</td>
+</tr>
+</tbody>
+</table>
+<p>We used precision, recall, and F0.5 measure as the evaluation metrics. F0.5 (which puts a higher weight on precision) is a common metric used for evaluating spell checking and grammatical error correction systems. Note that from this table the full Transformer model seems is just barely better than Aspell, but this is because the FCE dataset is written in British English and the Transformer accidentally "corrects" many British spelling to American English.   </p>
+<p>Finally, we note that the use of the Transformer + back-translation for spelling correction and grammatical error correction (GEC) is nothing new. There is a lot of interesting work done for GEC. Check out <a href="https://arxiv.org/abs/1909.00502">(Kiyono et al. 2019)</a> and <a href="https://www.aclweb.org/anthology/W19-4427/">(Grundkiewicz et al. 2019)</a> if you are interested in the latest development in this field.</p>
+    <blockquote>
+      <figure style="display: block; text-align: center;">
+        <a href="https://www.manning.com/books/real-world-natural-language-processing"><img src="http://www.realworldnlpbook.com/blog/images/rwnlp-meap.png" style="width: 128px;"/></a>
+      </figure>
+      <p>This is a sample article from my book <a href="https://www.manning.com/books/real-world-natural-language-processing">"Real-World Natural Language Processing" (Manning Publications)</a>. If you are interested in learning more about NLP, check it out from the book link!</p>
+    </blockquote>
+  </div>
+  <div class="tag-cloud">
+    <p>
+      <a href="http://www.realworldnlpbook.com/blog/tag/transformer.html">Transformer</a>
+      <a href="http://www.realworldnlpbook.com/blog/tag/fairseq.html">fairseq</a>
+    </p>
+  </div>
+
+
+
+
+
+</article>
+
+    <footer>
+<p>&copy;  2018</p>
+<p>    Powered by <a href="http://getpelican.com" target="_blank">Pelican</a> - <a href="https://github.com/alexandrevicenzi/flex" target="_blank">Flex</a> theme by <a href="http://alexandrevicenzi.com" target="_blank">Alexandre Vicenzi</a>
+</p>    </footer>
+  </main>
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context" : "http://schema.org",
+  "@type" : "Blog",
+  "name": " Real-World Natural Language Processing ",
+  "url" : "http://www.realworldnlpbook.com/blog",
+  "image": "http://masatohagiwara.net/img/profile.jpg",
+  "description": ""
+}
+</script>
+
+</body>
+</html>
